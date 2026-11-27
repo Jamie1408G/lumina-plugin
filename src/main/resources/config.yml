@@ -1,0 +1,167 @@
+# ============================================================
+#  Lumina plugin - main config
+#  Money values are in LumiCoins (LC) and may have 2 decimals.
+#  Change something? Use /lumina reload (or restart the server).
+# ============================================================
+
+# ---------- LumiCoins ----------
+lumicoins:
+  # What a brand-new player starts with.
+  starting-balance: 50.00
+  # Symbol shown before amounts, e.g. "LC 12.50".
+  symbol: "LC"
+  # Number of players shown in /lumicoins top.
+  top-size: 10
+
+# ---------- Journey planner ----------
+planner:
+  # Used when two neighbouring stations don't both have a location set yet
+  # (set locations in-game with /lumina setstation <station>).
+  default-hop-distance: 400
+  # Multiplier on the straight-line distance between two stations,
+  # to account for curves in the track.
+  distance-factor: 1.15
+  # "Cost" of a transfer, in blocks, so the planner prefers fewer transfers.
+  transfer-penalty: 600
+  # For the time estimate.
+  train-speed-blocks-per-second: 12
+  dwell-seconds: 15
+  transfer-seconds: 60
+
+# ---------- Lumina Card & faregates ----------
+card:
+  # Item used for the card. Any Minecraft item name.
+  material: PAPER
+  name: "&b&lLumina Card"
+  price: 5.00
+  # Stored value already on a new card.
+  initial-value: 0.00
+  max-cards-per-player: 1
+  # Fee for /luminacard replace (lost card). The balance moves to the new card.
+  replace-fee: 2.00
+  # Allow /luminacard topup anywhere. If false, players must use a [Top Up] sign.
+  allow-command-topup: true
+  # Maximum stored value on one card.
+  max-value: 500.00
+
+fares:
+  # Fare = base + per-km x distance (1 km = 1000 blocks), between min and max.
+  base: 0.80
+  per-km: 0.40
+  min: 0.80
+  max: 3.00
+  # Charged when a trip has no tap-in or no tap-out.
+  incomplete-trip-fare: 3.00
+  # Entering and leaving at the same station within this time is free.
+  same-station-grace-minutes: 5
+  # Card value needed to tap in.
+  min-value-to-enter: 0.80
+
+faregates:
+  # How long the gate stays open (ticks, 20 ticks = 1 second).
+  open-ticks: 50
+  # How far from the sign to look for a gate (fence gate, door or trapdoor).
+  search-radius: 2
+
+# ---------- Jobs ----------
+jobs:
+  # Salary is paid per full period of active, on-duty time.
+  pay-period-minutes: 20
+  # Players who don't move for this long stop earning until they move again.
+  afk-minutes: 5
+  # Waiting time before a player can switch to another job.
+  switch-cooldown-minutes: 60
+  roles:
+    lupa-builder:
+      name: "&aLUPA Builder"
+      description: "Designs and builds Lumina for the Lumina Urban Planning Authority."
+      salary: 25.00
+      # 0 = unlimited
+      max-players: 0
+      # Leave empty so anyone can choose this job, or set a permission.
+      permission: ""
+      # LUPA Builders on duty may build inside properties.
+      property-bypass: true
+      free-travel: false
+    lumina-authority:
+      name: "&9Lumina Authority"
+      description: "Keeps the city safe, welcomes new residents and helps players."
+      salary: 30.00
+      max-players: 5
+      permission: "lumina.job.authority"
+      property-bypass: false
+      free-travel: true
+    mrt-staff:
+      name: "&cMRT Staff"
+      description: "Runs the Lumina Line and CrossTown Line and helps passengers at stations."
+      salary: 20.00
+      max-players: 0
+      permission: ""
+      property-bypass: false
+      # Staff on duty travel for free through the faregates.
+      free-travel: true
+
+# ---------- Quests ----------
+quests:
+  # Timezone for daily/weekly resets.
+  reset-timezone: "Europe/Amsterdam"
+  # Types: TRIPS, TRIP_BETWEEN, DISTANCE, VISIT_STATIONS, WORK_MINUTES
+  # repeat: NEVER, DAILY or WEEKLY
+  list:
+    first-ride:
+      name: "First Ride"
+      description: "Tap in and take your first trip on the network."
+      type: TRIPS
+      amount: 1
+      reward: 10.00
+      repeat: NEVER
+    daily-commuter:
+      name: "Daily Commuter"
+      description: "Take 3 trips today."
+      type: TRIPS
+      amount: 3
+      reward: 6.00
+      repeat: DAILY
+    across-town:
+      name: "Across Town"
+      description: "Travel from Expo Town to Vivora on the CrossTown Line."
+      type: TRIP_BETWEEN
+      from: "Expo Town"
+      to: "Vivora"
+      reward: 15.00
+      repeat: NEVER
+    station-explorer:
+      name: "Station Explorer"
+      description: "Tap in or out at 5 different stations."
+      type: VISIT_STATIONS
+      amount: 5
+      reward: 25.00
+      repeat: NEVER
+    long-haul:
+      name: "Long Haul"
+      description: "Travel 5 km on the network this week."
+      type: DISTANCE
+      amount: 5000
+      reward: 20.00
+      repeat: WEEKLY
+    hard-worker:
+      name: "Hard Worker"
+      description: "Work 60 minutes on duty in any city job this week."
+      type: WORK_MINUTES
+      amount: 60
+      job: ""
+      reward: 30.00
+      repeat: WEEKLY
+
+# ---------- Property ----------
+property:
+  max-per-player: 2
+  # Part of the price you get back with /property sell.
+  sell-back-percent: 75
+  # Protect properties: only the owner, trusted players and admins
+  # (and on-duty jobs with property-bypass) can build and open things inside.
+  # Turn off if another protection plugin already handles this.
+  protection: true
+
+# Autosave interval for player data, in minutes.
+autosave-minutes: 5

@@ -1,0 +1,93 @@
+name: Lumina
+version: '${project.version}'
+main: nl.jamie1408g.lumina.LuminaPlugin
+api-version: '1.21'
+author: Jamie1408G
+description: 'Minecraft Lumina: journey planner, LumiCoins, Lumina Card faregates, city jobs, quests and property.'
+
+commands:
+  lumina:
+    description: Lumina overview and admin tools
+    usage: /lumina
+    aliases: [lu]
+  route:
+    description: Plan a journey on the Lumina network
+    usage: /route <from> <to>
+    aliases: [lroute, journey]
+    permission: lumina.use
+  metro:
+    description: Lines and stations of the Lumina network
+    usage: /metro <lines|line|station|nearest>
+    aliases: [lmetro, mrt]
+    permission: lumina.use
+  lumicoins:
+    description: Your LumiCoins wallet
+    usage: /lumicoins [balance|pay|top]
+    aliases: [lc, lumicoin, coins]
+    permission: lumina.use
+  luminacard:
+    description: Your Lumina Card
+    usage: /luminacard <buy|info|topup|history|replace>
+    aliases: [lcard, card]
+    permission: lumina.use
+  luminajob:
+    description: City jobs in Lumina
+    usage: /luminajob <list|join|leave|duty|who|call|info>
+    aliases: [ljob, job]
+    permission: lumina.use
+  lquests:
+    description: Lumina quests
+    usage: /lquests
+    aliases: [luminaquests, lquest, quests]
+    permission: lumina.use
+  property:
+    description: Apartments and property in Lumina
+    usage: /property <list|info|buy|sell|mine|trust|untrust>
+    aliases: [lproperty, apartment, flat]
+    permission: lumina.use
+
+permissions:
+  lumina.use:
+    description: Use the normal Lumina features
+    default: true
+  lumina.admin:
+    description: All Lumina admin tools
+    default: op
+    children:
+      lumina.use: true
+      lumina.admin.reload: true
+      lumina.admin.network: true
+      lumina.admin.signs: true
+      lumina.admin.eco: true
+      lumina.admin.card: true
+      lumina.admin.jobs: true
+      lumina.admin.quests: true
+      lumina.admin.property: true
+      lumina.property.bypass: true
+  lumina.admin.reload:
+    description: Reload Lumina configs
+    default: op
+  lumina.admin.network:
+    description: Set station locations
+    default: op
+  lumina.admin.signs:
+    description: Place faregate and top-up signs
+    default: op
+  lumina.admin.eco:
+    description: Give, take and set LumiCoins
+    default: op
+  lumina.admin.card:
+    description: Inspect and block Lumina Cards
+    default: op
+  lumina.admin.jobs:
+    description: Manage player jobs
+    default: op
+  lumina.admin.quests:
+    description: Reset quest progress
+    default: op
+  lumina.admin.property:
+    description: Create and manage properties
+    default: op
+  lumina.property.bypass:
+    description: Build in any Lumina property
+    default: op

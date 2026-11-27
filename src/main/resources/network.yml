@@ -1,0 +1,41 @@
+# ============================================================
+#  Lumina network - lines and stations
+#
+#  Each station is written as "CODE Name". A station with the same name
+#  on two lines is an interchange (like Civic Skyline below).
+#  The order of the list is the order along the line.
+#
+#  Example data: change it to match your real lines!
+#  After editing: /lumina reload
+#  Then stand at each station and use /lumina setstation <code>
+#  so distances, fares and /metro nearest work properly.
+# ============================================================
+
+lines:
+  LML:
+    name: "Lumina Line"
+    # Colour code used in chat (&b = aqua, &6 = gold/orange, &a = green, ...)
+    color: "&b"
+    # true if the last station connects back to the first one
+    loop: false
+    stations:
+      - "LM1 Tanjong Gateway"
+      - "LM2 Civic Skyline"
+      - "LM3 Bukit Simei"
+  CTL:
+    name: "CrossTown Line"
+    color: "&6"
+    loop: false
+    stations:
+      - "CT1 Expo Town"
+      - "CT2 Civic Skyline"
+      - "CT3 Vivora"
+
+# Optional extra info shown in /metro station and the journey planner.
+station-info:
+  "Tanjong Gateway": "Alight for the Gateway"
+  "Civic Skyline": "Civic Square, Skyline Plaza"
+  "Bukit Simei": "Awards Center, Bukit Town"
+
+# Station locations are filled in by /lumina setstation. You can leave this alone.
+locations: {}
