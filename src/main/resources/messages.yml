@@ -86,6 +86,16 @@ city:
   district-header: "&b&lDistricts&7: {count}"
   district-entry: " &f{district} &7{area}"
 
+shop:
+  unknown-item: "&cNo shop item called '&f{item}&c'. Write an item id on line 2: &f{items}"
+  sign-created: "&aShop sign for &f{item}&a is ready. Wax it with honeycomb so it can't be edited by accident."
+  gone: "&cThis item isn't for sale any more."
+  too-expensive: "&c{item} costs {price}.&7 You have &f{balance}&7."
+  inventory-full: "&cMake some room in your inventory first."
+  bought: "&aBought &f{item}&a for &f{price}&a. Wallet: &f{balance}"
+  list-header: "&b&lLumina shop&7: {count} item(s), sold at &a[Shop]&7 signs"
+  list-entry: " &f{item} &8- &b{price} &8({id})"
+
 laws:
   none: "Lumina's laws haven't been written yet (laws.yml)."
   no-match: "No law mentions '&f{query}&7'. Open the full book with &f/{label}"
@@ -253,7 +263,7 @@ admin:
   overview: "&b&lLumina &7- welcome, &f{player}\n &7Wallet: &b{balance} &8| &7Card: &b{card}\n &7Job: {job} &8| &7Properties: &f{properties}\n &7Trips: &f{trips} &8| &7Travelled: &f{distance} &8| &7Stations: &f{stations}"
   overview-no-card: "&8none"
   overview-no-job: "&8none"
-  player-help: "&b&lCommands\n &f/route <from> <to> &8- &7plan a journey\n &f/metro &8- &7lines and stations\n &f/lumicoins &8- &7your wallet\n &f/luminacard &8- &7your Lumina Card\n &f/luminajob &8- &7city jobs\n &f/lquests &8- &7quests\n &f/property &8- &7apartments\n &f/lulaws &8- &7Lumina's laws\n &f/lumina where &8- &7which district you're in"
+  player-help: "&b&lCommands\n &f/route <from> <to> &8- &7plan a journey\n &f/metro &8- &7lines and stations\n &f/lumicoins &8- &7your wallet\n &f/luminacard &8- &7your Lumina Card\n &f/luminajob &8- &7city jobs\n &f/lquests &8- &7quests\n &f/property &8- &7apartments\n &f/lulaws &8- &7Lumina's laws\n &f/lumina where &8- &7which district you're in\n &f/lumina shop &8- &7what the city sells"
   admin-help: "&c&lAdmin\n &f/lumina reload &8| &fnetwork &8| &fsetstation <station>\n &f/lumina gate place <station> [in|out|both] &8| &fgate remove|rebuild|list\n &f/lumina pos1 &8| &fpos2 &8| &fcity set &8| &fdistrict add|remove|list <name>\n &f/lumina property create <id> <price> [district]\n &f/lumina property delete|price|evict <id>\n &f/lumina givecard <player> [value] &8| &fcard|blockcard|unblockcard <id>\n &f/lumina job <player> <job|none> &8| &fquestreset <player> [quest]\n &f/lumicoins give|take|set <player> <amount>"
   reloaded: "&aReloaded: {lines} lines, {stations} stations, {jobs} jobs, {quests} quests."
   station-set: "&aLocation of &f{station}&a set to {x}, {y}, {z}."

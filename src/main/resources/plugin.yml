@@ -69,10 +69,7 @@ permissions:
       lumina.admin.quests: true
       lumina.admin.property: true
       lumina.admin.city: true
-      lumina.admin.city:
-    description: Set the city border and districts
-    default: op
-  lumina.property.bypass: true
+      lumina.property.bypass: true
   lumina.admin.reload:
     description: Reload Lumina configs
     default: op
@@ -96,6 +93,9 @@ permissions:
     default: op
   lumina.admin.property:
     description: Create and manage properties
+    default: op
+  lumina.admin.city:
+    description: Set the city border and districts
     default: op
   lumina.admin.city:
     description: Set the city border and districts

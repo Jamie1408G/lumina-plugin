@@ -108,6 +108,23 @@ jobs:
       # Free through the faregates while working on an accepted job request (only if it gets completed).
       free-travel: true
 
+# ---------- Shop ----------
+# Things the city sells for LumiCoins. Staff place a sign with [Shop] on line 1 and the item id
+# (e.g. lumina-flag) on line 2; players right-click it to buy. item: is a Minecraft item id.
+shop:
+  lumina-flag:
+    item: light_blue_banner
+    name: Lumina Flag
+    price: 25
+  bread:
+    item: bread
+    amount: 8
+    price: 4
+  fireworks:
+    item: firework_rocket
+    amount: 16
+    price: 10
+
 # ---------- City ----------
 # The city border and districts are set in game: /lumina pos1, /lumina pos2, then
 # /lumina city set or /lumina district add <name>. Texts are in messages.yml (city:).
