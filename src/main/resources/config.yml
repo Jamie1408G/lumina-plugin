@@ -57,17 +57,18 @@ fares:
   # Card value needed to tap in.
   min-value-to-enter: 0.80
 
-# LRT lines (type: lrt in network.yml) have no faregates: getting into a train at an LRT station
-# charges this fare from the Lumina Card (held or anywhere in the inventory). Without a card, or
-# with too little on it, you can't get in. Free on a job pass (only if the job gets confirmed),
-# on the free ride home after a job, and when already tapped in through an MRT faregate.
+# LRT lines (type: lrt in network.yml) have no faregates but cost the same as the MRT (fares above):
+# getting into a train at an LRT station pays the starting fare from the Lumina Card (held or
+# anywhere in the inventory), getting off at another LRT station pays the rest for the distance.
+# Without a card, or with less than the starting fare, you can't get in. Free on a job pass (only
+# if the job gets confirmed), on the free ride home after a job, and when already tapped in
+# through an MRT faregate.
 lrt:
   enabled: true
-  fare: 0.80
   # How close to the LRT station (set with /lumina setstation) the train must be, in blocks.
   boarding-radius: 12
   boarding-height: 12
-  # Getting off and on again (or changing seats) within this time isn't charged again.
+  # Getting off and on again (changing seats or trains) within this time continues the same ride.
   reboard-grace-seconds: 120
 
 faregates:

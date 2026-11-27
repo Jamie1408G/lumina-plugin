@@ -88,10 +88,13 @@ city:
 
 lrt:
   no-card: "&cYou need a Lumina Card to ride the LRT at {station}.&7 Get one at a card machine or with &f/luminacard"
-  insufficient: "&cNot enough on your card for the LRT ({fare}).&7 Card value: &f{value}&7. Top up first."
-  paid-bar: "&aLRT {station} &8| &7fare &f{fare} &8| &7card &f{value}"
+  insufficient: "&cYou need at least {fare} on your card to ride the LRT.&7 Card value: &f{value}&7. Top up first."
+  paid-bar: "&aLRT {station} &8| &7starting fare &f{fare} &8| &7card &f{value}"
+  exit-bar: "&aLRT {station} &8| &7+{extra}, ride &f{fare} &8| &7card &f{value}"
+  below-zero: "&eYour Lumina Card is at &f{value}&e. Top up before your next trip."
   in-trip-bar: "&aLRT {station} &8| &7part of your trip, paid when you tap out"
-  job-bar: "&aJob pass &8| &7LRT fare &f{fare}&7 is free once your job is confirmed"
+  job-bar: "&aJob pass &8| &7LRT {station}, free once your job is confirmed"
+  job-exit-bar: "&aJob pass &8| &7ride &f{fare}&7 is free once your job is confirmed"
   ride-home-bar: "&aFree ride home &8| &7Card value &f{value}"
 
 update:

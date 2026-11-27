@@ -15,26 +15,51 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.vehicle.VehicleEnterEvent;
+import org.bukkit.event.vehicle.VehicleExitEvent;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * LRT lines (type: lrt in network.yml) have no faregates: getting into a train at an LRT station
- * charges a flat fare from the player's Lumina Card (held or anywhere in their inventory).
+ * LRT lines (type: lrt in network.yml) have no faregates, but cost the same as the MRT: the fare
+ * for the distance travelled, with the same base, per-km, minimum and maximum (fares: in config.yml).
  *
- * Free when: on an accepted job with a free-travel role (the fare is noted on the job and only
- * forgiven once the job is confirmed), the free ride home after a job, already tapped in through
- * an MRT faregate (the LRT is part of that trip), or boarding again within the grace time.
- * Without a card, or with too little on it, you can't get in.
+ * Getting into a train at an LRT station pays the starting fare from the player's Lumina Card (held
+ * or anywhere in the inventory). Getting off at another LRT station pays the rest, so the ride
+ * costs exactly what the MRT would. Changing trains within the grace time continues the same ride.
+ *
+ * Free when: on an accepted job with a free-travel role (the fares are noted on the job and only
+ * forgiven once the job is confirmed), the free ride home after a job, or already tapped in through
+ * an MRT faregate (then the ride is part of that trip). Without a card, or with less than the
+ * starting fare on it, you can't get in.
  */
 public final class LrtFareListener implements Listener {
 
+    private enum Pay { CARD, JOB, FREE }
+
+    /** One LRT ride: where it started, what's been paid so far, and when they last got on or off. */
+    private static final class Ride {
+        final String startKey;
+        final String startName;
+        final Pay pay;
+        final String cardId;
+        long paid;
+        long lastSeen;
+
+        Ride(Station start, Pay pay, String cardId, long paid, long now) {
+            this.startKey = start.key();
+            this.startName = start.name();
+            this.pay = pay;
+            this.cardId = cardId;
+            this.paid = paid;
+            this.lastSeen = now;
+        }
+    }
+
     private final LuminaPlugin plugin;
-    private final Map<UUID, Long> lastBoarding = new HashMap<>();
+    private final Map<UUID, Ride> rides = new HashMap<>();
     private boolean enabled = true;
-    private long fare;
     private double radius = 12;
     private double heightRange = 12;
     private long graceMillis = 120_000L;
@@ -46,11 +71,16 @@ public final class LrtFareListener implements Listener {
     public void load() {
         FileConfiguration c = plugin.getConfig();
         enabled = c.getBoolean("lrt.enabled", true);
-        fare = Money.fromDouble(c.getDouble("lrt.fare", c.getDouble("fares.base", 0.80)));
         radius = Math.max(1, c.getDouble("lrt.boarding-radius", 12));
         heightRange = Math.max(1, c.getDouble("lrt.boarding-height", 12));
         graceMillis = Math.max(0, c.getLong("lrt.reboard-grace-seconds", 120)) * 1000L;
     }
+
+    private FareCalculator fares() {
+        return plugin.network().fares();
+    }
+
+    // ------------------------------------------------------------ getting in
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onEnter(VehicleEnterEvent event) {
@@ -62,15 +92,14 @@ public final class LrtFareListener implements Listener {
             return; // not a train at an LRT station (MRT platforms are behind the faregates)
         }
         long now = System.currentTimeMillis();
-        Long last = lastBoarding.get(player.getUniqueId());
-        if (last != null && now - last < graceMillis) {
-            return; // changed seats, or got off and on again: already paid
+        Ride ride = rides.get(player.getUniqueId());
+        if (ride != null && now - ride.lastSeen < graceMillis) {
+            ride.lastSeen = now; // changing seats or trains: the same ride goes on
+            plugin.gates().visit(player, station);
+            return;
         }
 
-        CardRecord card = plugin.cards().cardInHand(player);
-        if (card == null) {
-            card = plugin.cards().cardOnPlayer(player);
-        }
+        CardRecord card = plugin.cards().cardOnPlayer(player);
         if (card == null) {
             event.setCancelled(true);
             plugin.msg().send(player, "lrt.no-card", "station", station.name());
@@ -84,47 +113,103 @@ public final class LrtFareListener implements Listener {
             return;
         }
 
+        long start = fares().fare(0);
         if (card.tappedIn() != null) {
             // Came through an MRT faregate: the LRT ride is part of that trip, paid when tapping out.
-            boarded(player, now, station);
+            begin(player, new Ride(station, Pay.FREE, card.id(), 0, now), station);
             plugin.msg().actionBar(player, "lrt.in-trip-bar", "station", station.name());
             return;
         }
         if (plugin.jobs().freeTravel(player)) {
-            plugin.jobs().noteFare(player, fare);
-            boarded(player, now, station);
-            plugin.msg().actionBar(player, "lrt.job-bar", "station", station.name(), "fare", Money.format(fare));
+            plugin.jobs().noteFare(player, start);
+            begin(player, new Ride(station, Pay.JOB, card.id(), start, now), station);
+            plugin.msg().actionBar(player, "lrt.job-bar", "station", station.name());
             return;
         }
         if (plugin.jobs().useRideHome(player)) {
-            boarded(player, now, station);
+            begin(player, new Ride(station, Pay.FREE, card.id(), 0, now), station);
             plugin.msg().actionBar(player, "lrt.ride-home-bar", "station", station.name(), "value", Money.format(card.value()));
             return;
         }
-        if (card.value() < fare) {
+        if (card.value() < start) {
             event.setCancelled(true);
-            plugin.msg().send(player, "lrt.insufficient", "fare", Money.format(fare), "value", Money.format(card.value()));
+            plugin.msg().send(player, "lrt.insufficient", "fare", Money.format(start), "value", Money.format(card.value()));
             plugin.gates().playDeny(player);
             return;
         }
-        card.setValue(card.value() - fare);
-        card.addHistory(FaregateListener.time() + " | LRT " + station.name() + " | -" + Money.plain(fare));
+        card.setValue(card.value() - start);
+        card.addHistory(FaregateListener.time() + " | LRT from " + station.name() + " | -" + Money.plain(start));
         plugin.storage().markDirty();
-        boarded(player, now, station);
+        begin(player, new Ride(station, Pay.CARD, card.id(), start, now), station);
         plugin.gates().playSuccess(player);
-        plugin.msg().actionBar(player, "lrt.paid-bar", "station", station.name(), "fare", Money.format(fare),
+        plugin.msg().actionBar(player, "lrt.paid-bar", "station", station.name(), "fare", Money.format(start),
                 "value", Money.format(card.value()));
     }
 
-    private void boarded(Player player, long now, Station station) {
-        lastBoarding.put(player.getUniqueId(), now);
+    private void begin(Player player, Ride ride, Station station) {
+        rides.put(player.getUniqueId(), ride);
         plugin.gates().visit(player, station);
+    }
+
+    // ------------------------------------------------------------ getting off
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onExit(VehicleExitEvent event) {
+        if (!(event.getExited() instanceof Player player) || !(event.getVehicle() instanceof Minecart)) {
+            return;
+        }
+        Ride ride = rides.get(player.getUniqueId());
+        if (ride == null) {
+            return;
+        }
+        ride.lastSeen = System.currentTimeMillis();
+        Station station = lrtStationNear(event.getVehicle().getLocation());
+        if (station == null || station.key().equals(ride.startKey)) {
+            return; // got off between stations, or where they got on: only the starting fare
+        }
+        plugin.gates().visit(player, station);
+        // Looked up by key, so a /lumina reload during the ride doesn't matter.
+        Station start = plugin.network().network().byKey(ride.startKey);
+        int distance = start == null ? -1 : plugin.network().planner().shortestDistance(start, station);
+        long total = distance < 0 ? fares().max() : fares().fare(distance);
+        long extra = total - ride.paid;
+        if (extra <= 0) {
+            return; // already paid for this far (e.g. rode back towards the start)
+        }
+        ride.paid = total;
+        switch (ride.pay) {
+            case FREE -> {
+            }
+            case JOB -> {
+                plugin.jobs().noteFare(player, extra);
+                plugin.msg().actionBar(player, "lrt.job-exit-bar", "station", station.name(), "fare", Money.format(total));
+            }
+            case CARD -> {
+                CardRecord card = plugin.storage().card(ride.cardId);
+                if (card == null) {
+                    return;
+                }
+                // They're already off the train, so this can take the card below zero; the next
+                // trip needs a top-up first (fares.min-value-to-enter).
+                card.setValue(card.value() - extra);
+                card.addHistory(FaregateListener.time() + " | LRT " + ride.startName + " > " + station.name()
+                        + " | -" + Money.plain(extra));
+                plugin.storage().markDirty();
+                plugin.msg().actionBar(player, "lrt.exit-bar", "station", station.name(), "extra", Money.format(extra),
+                        "fare", Money.format(total), "value", Money.format(card.value()));
+                if (card.value() < 0) {
+                    plugin.msg().send(player, "lrt.below-zero", "value", Money.format(card.value()));
+                }
+            }
+        }
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        lastBoarding.remove(event.getPlayer().getUniqueId());
+        rides.remove(event.getPlayer().getUniqueId());
     }
+
+    // ------------------------------------------------------------ stations
 
     /** The closest station on an LRT line within the boarding radius, or null. */
     private Station lrtStationNear(Location l) {
