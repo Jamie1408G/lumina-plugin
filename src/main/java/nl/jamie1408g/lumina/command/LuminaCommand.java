@@ -107,6 +107,7 @@ public final class LuminaCommand implements TabExecutor {
             case "property" -> property(sender, args);
             case "place", "places" -> place(sender, args);
             case "gate", "gates" -> gate(sender, args);
+            case "machine", "machines", "ticketmachine" -> machine(sender, args);
             case "where" -> {
                 if (!(sender instanceof Player player)) {
                     playersOnly(sender);
@@ -606,6 +607,49 @@ public final class LuminaCommand implements TabExecutor {
         }
     }
 
+    /** /lumina machine place | remove | rebuild | list: ticket machines. */
+    private void machine(CommandSender sender, String[] args) {
+        if (!check(sender, "lumina.admin.signs")) {
+            return;
+        }
+        var machines = plugin.machines();
+        String action = args.length < 2 ? "list" : args[1].toLowerCase(Locale.ROOT);
+        switch (action) {
+            case "list" -> {
+                plugin.msg().line(sender, "machine.list-header", "count", machines.all().size());
+                for (var m : machines.all()) {
+                    plugin.msg().line(sender, "machine.list-entry", "x", m.x(), "y", m.y(), "z", m.z(), "world", m.world());
+                }
+            }
+            case "place" -> {
+                if (!(sender instanceof Player player)) {
+                    playersOnly(sender);
+                    return;
+                }
+                String problem = machines.place(player);
+                plugin.msg().send(sender, problem == null ? "machine.placed" : problem);
+            }
+            case "remove" -> {
+                if (!(sender instanceof Player player)) {
+                    playersOnly(sender);
+                    return;
+                }
+                var m = machines.near(player.getLocation(), 3);
+                if (m == null) {
+                    plugin.msg().send(sender, "machine.none-near");
+                    return;
+                }
+                machines.remove(m);
+                plugin.msg().send(sender, "machine.removed");
+            }
+            case "rebuild" -> {
+                int[] r = machines.rebuildAll();
+                plugin.msg().send(sender, "machine.rebuilt", "count", r[0], "skipped", r[1]);
+            }
+            default -> plugin.msg().send(sender, "machine.usage");
+        }
+    }
+
     /** /lumina gate place <station> [in|out|both] | remove | rebuild | list */
     private void gate(CommandSender sender, String[] args) {
         if (!check(sender, "lumina.admin.signs")) {
@@ -690,7 +734,7 @@ public final class LuminaCommand implements TabExecutor {
         if (args.length == 1) {
             List<String> subs = new ArrayList<>(List.of("help", "where", "shop", "walkthrough"));
             if (sender.hasPermission("lumina.admin")) {
-                subs.addAll(List.of("reload", "setstation", "network", "pos1", "pos2", "pos3", "pos4", "pos5", "pos6", "pos", "city", "place", "district", "property", "gate", "fares", "update", "version", "givecard",
+                subs.addAll(List.of("reload", "setstation", "network", "machine", "pos1", "pos2", "pos3", "pos4", "pos5", "pos6", "pos", "city", "place", "district", "property", "gate", "fares", "update", "version", "givecard",
                         "card", "blockcard", "unblockcard", "job", "questreset"));
             }
             return Cmd.filter(subs, args[0]);
@@ -704,6 +748,7 @@ public final class LuminaCommand implements TabExecutor {
                 case "setstation" -> plugin.network().network().completions(args[1]);
                 case "property" -> Cmd.filter(args[1], "create", "delete", "price", "evict");
                 case "gate", "gates" -> Cmd.filter(args[1], "place", "remove", "rebuild", "list");
+                case "machine", "machines", "ticketmachine" -> Cmd.filter(args[1], "place", "remove", "rebuild", "list");
                 case "city" -> Cmd.filter(args[1], "set", "show", "info");
                 case "pos", "positions" -> Cmd.filter(args[1], "clear");
                 case "place", "places" -> Cmd.filter(args[1], "add", "here", "remove", "list");

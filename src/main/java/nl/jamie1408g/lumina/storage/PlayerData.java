@@ -33,6 +33,8 @@ public final class PlayerData {
     private long distance;
     private boolean walkthroughSeen;
     private boolean xaeroWaypoints;
+    private long passUntil;
+    private boolean passRenew;
     private final Set<String> visitedStations = new LinkedHashSet<>();
     private final Map<String, QuestProgress> quests = new HashMap<>();
 
@@ -124,6 +126,24 @@ public final class PlayerData {
 
     public void setWalkthroughSeen(boolean walkthroughSeen) {
         this.walkthroughSeen = walkthroughSeen;
+    }
+
+    /** Monthly Pass valid until this time (epoch millis), 0 = no pass. */
+    public long passUntil() {
+        return passUntil;
+    }
+
+    public void setPassUntil(long passUntil) {
+        this.passUntil = passUntil;
+    }
+
+    /** The Monthly Pass renews itself from the wallet when it runs out. */
+    public boolean passRenew() {
+        return passRenew;
+    }
+
+    public void setPassRenew(boolean passRenew) {
+        this.passRenew = passRenew;
     }
 
     /** Wants journey destinations as Xaero's Minimap waypoints in chat (/route xaero). */

@@ -62,6 +62,25 @@ card:
   allow-command-topup: true
   # Maximum stored value on one card.
   max-value: 500.00
+  # Names of the other card types.
+  auto-name: "&b&lLumina Auto Card"
+  pass-name: "&6&lLumina Pass"
+  # Auto top-up amounts players can choose (ticket machine or /luminacard auto). When an Auto
+  # Card drops below the starting fare or can't pay a fare, this is moved from the wallet.
+  auto-top-up-amounts: [10, 20]
+
+# ---------- Monthly Pass ----------
+# A subscription for unlimited MRT and LRT rides with your Lumina Card. Renews by itself from the
+# wallet when it ends (while the player is online); players can stop that at a ticket machine.
+pass:
+  enabled: true
+  price: 100.00
+  days: 30
+
+# ---------- Ticket machines ----------
+# Placed with /lumina machine place. The amounts on the Top up screen (up to 7).
+machine:
+  top-up-amounts: [5, 10, 20, 50, 100]
 
 fares:
   # Fare = base, plus per-step for every full step-blocks travelled, between min and max.

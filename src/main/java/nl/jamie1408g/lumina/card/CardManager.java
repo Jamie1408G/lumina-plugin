@@ -19,7 +19,11 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-/** Lumina Cards: buying, the card item, top-ups and replacements. */
+/**
+ * Lumina Cards: buying, the card item, top-ups, auto top-up and replacements. Card types: the
+ * Lumina Card (stored value), the Auto Card (tops itself up from the wallet when it runs low) and
+ * the Lumina Pass (any card of a player with a Monthly Pass, see {@link PassManager}).
+ */
 public final class CardManager {
 
     private final LuminaPlugin plugin;
@@ -33,6 +37,9 @@ public final class CardManager {
     private long replaceFee;
     private long maxValue;
     private boolean commandTopUp;
+    private String autoName = "&b&lLumina Auto Card";
+    private String passName = "&6&lLumina Pass";
+    private List<Long> autoAmounts = List.of(1000L, 2000L);
 
     public CardManager(LuminaPlugin plugin) {
         this.plugin = plugin;
@@ -54,6 +61,29 @@ public final class CardManager {
         replaceFee = Money.fromDouble(config.getDouble("card.replace-fee", 2.00));
         maxValue = Money.fromDouble(config.getDouble("card.max-value", 500));
         commandTopUp = config.getBoolean("card.allow-command-topup", true);
+        autoName = config.getString("card.auto-name", "&b&lLumina Auto Card");
+        passName = config.getString("card.pass-name", "&6&lLumina Pass");
+        List<Long> amounts = new ArrayList<>();
+        for (Double d : config.getDoubleList("card.auto-top-up-amounts")) {
+            long cents = Money.fromDouble(d);
+            if (cents > 0 && !amounts.contains(cents)) {
+                amounts.add(cents);
+            }
+        }
+        autoAmounts = amounts.isEmpty() ? List.of(1000L, 2000L) : List.copyOf(amounts);
+    }
+
+    /** The auto top-up amounts players can pick (LC 10 and LC 20 by default). */
+    public List<Long> autoTopUpAmounts() {
+        return autoAmounts;
+    }
+
+    public long maxValue() {
+        return maxValue;
+    }
+
+    public long replaceFee() {
+        return replaceFee;
     }
 
     public long price() {
@@ -70,10 +100,17 @@ public final class CardManager {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(Msg.color(name));
+            boolean pass = plugin.passes() != null && plugin.passes().validNow(card.owner());
+            meta.setDisplayName(Msg.color(pass ? passName : card.autoTopUp() > 0 ? autoName : name));
             List<String> lore = new ArrayList<>();
             lore.add(plugin.msg().get("card.lore-number", "id", card.id()));
             lore.add(plugin.msg().get("card.lore-owner", "owner", ownerName));
+            if (pass) {
+                lore.add(plugin.msg().get("card.lore-pass", "until", plugin.passes().until(card.owner())));
+            }
+            if (card.autoTopUp() > 0) {
+                lore.add(plugin.msg().get("card.lore-auto", "amount", Money.format(card.autoTopUp())));
+            }
             lore.add(plugin.msg().get("card.lore-hint"));
             meta.setLore(lore);
             meta.getPersistentDataContainer().set(cardKey, PersistentDataType.STRING, card.id());
@@ -128,6 +165,28 @@ public final class CardManager {
         return result;
     }
 
+    /** The player's own card: in hand, else in their inventory, else any active card of theirs. */
+    public CardRecord mainCard(Player player) {
+        CardRecord card = cardOnPlayer(player);
+        if (card != null && !card.blocked() && card.owner().equals(player.getUniqueId())) {
+            return card;
+        }
+        List<CardRecord> cards = activeCards(player.getUniqueId());
+        return cards.isEmpty() ? null : cards.get(0);
+    }
+
+    /** Updates the name and lore of the player's own card items (after a change of card type). */
+    public void refreshItems(Player player) {
+        ItemStack[] contents = player.getInventory().getContents();
+        for (int i = 0; i < contents.length; i++) {
+            String id = cardId(contents[i]);
+            CardRecord card = id == null ? null : plugin.storage().card(id);
+            if (card != null && card.owner().equals(player.getUniqueId())) {
+                player.getInventory().setItem(i, createItem(card, player.getName()));
+            }
+        }
+    }
+
     private String newId() {
         ThreadLocalRandom random = ThreadLocalRandom.current();
         String id;
@@ -147,8 +206,22 @@ public final class CardManager {
     // ------------------------------------------------------------ actions
 
     public void buy(Player player) {
+        buy(player, 0);
+    }
+
+    /**
+     * Buys a card; autoTopUp above 0 makes it an Auto Card. Someone who already has the maximum
+     * number of cards switches their card to that type instead, for free.
+     */
+    public void buy(Player player, long autoTopUp) {
         PlayerData data = plugin.data(player);
-        if (activeCards(player.getUniqueId()).size() >= maxCards) {
+        List<CardRecord> owned = activeCards(player.getUniqueId());
+        if (owned.size() >= maxCards) {
+            CardRecord card = mainCard(player);
+            if (card != null && card.autoTopUp() != autoTopUp) {
+                setAutoTopUp(player, card, autoTopUp);
+                return;
+            }
             plugin.msg().send(player, "card.max-cards", "max", maxCards);
             return;
         }
@@ -159,10 +232,70 @@ public final class CardManager {
         }
         CardRecord card = new CardRecord(newId(), player.getUniqueId());
         card.setValue(initialValue);
+        card.setAutoTopUp(autoTopUp);
         plugin.storage().addCard(card);
         give(player, createItem(card, player.getName()));
-        plugin.msg().send(player, "card.bought", "id", card.id(), "price", Money.format(price),
-                "value", Money.format(card.value()));
+        plugin.msg().send(player, autoTopUp > 0 ? "card.bought-auto" : "card.bought", "id", card.id(),
+                "price", Money.format(price), "value", Money.format(card.value()), "amount", Money.format(autoTopUp));
+        plugin.gates().playSuccess(player);
+    }
+
+    /** Turns auto top-up on (amount) or off (0) for this card. */
+    public void setAutoTopUp(Player player, CardRecord card, long amount) {
+        if (card.blocked()) {
+            plugin.msg().send(player, "card.blocked");
+            return;
+        }
+        card.setAutoTopUp(amount);
+        plugin.storage().markDirty();
+        refreshItems(player);
+        if (amount > 0) {
+            plugin.msg().send(player, "card.auto-on", "amount", Money.format(amount),
+                    "low", Money.format(plugin.network().fares().fare(0)));
+            afterCharge(player, card); // already low: top it up now
+        } else {
+            plugin.msg().send(player, "card.auto-off");
+        }
+        plugin.gates().playSuccess(player);
+    }
+
+    /**
+     * Auto top-up: a card with less than needed gets its auto top-up amount from the owner's wallet,
+     * a few times if one isn't enough. True if the card has enough now (auto top-up or not).
+     */
+    public boolean ensureValue(Player player, CardRecord card, long needed) {
+        if (card.value() >= needed) {
+            return true;
+        }
+        long amount = card.autoTopUp();
+        if (amount <= 0 || card.blocked()) {
+            return false;
+        }
+        for (int i = 0; i < 5 && card.value() < needed; i++) {
+            if (card.value() + amount > maxValue) {
+                plugin.msg().send(player, "card.max-value", "max", Money.format(maxValue));
+                break;
+            }
+            if (!plugin.economy().withdraw(card.owner(), amount, "auto top-up " + card.id())) {
+                PlayerData owner = plugin.storage().get(card.owner());
+                plugin.msg().send(player, "card.auto-failed", "amount", Money.format(amount),
+                        "balance", Money.format(owner == null ? 0 : owner.balance()));
+                break;
+            }
+            card.setValue(card.value() + amount);
+            card.addHistory(FaregateListener.time() + " | auto top-up | +" + Money.plain(amount));
+            plugin.storage().markDirty();
+            plugin.msg().send(player, "card.auto-topped-up", "amount", Money.format(amount),
+                    "value", Money.format(card.value()));
+        }
+        return card.value() >= needed;
+    }
+
+    /** After paying a fare: an Auto Card that ran low (below the starting fare) is topped up right away. */
+    public void afterCharge(Player player, CardRecord card) {
+        if (card.autoTopUp() > 0) {
+            ensureValue(player, card, plugin.network().fares().fare(0));
+        }
     }
 
     /** Gives a free card (admin). */
@@ -181,27 +314,33 @@ public final class CardManager {
             plugin.msg().send(player, "card.hold-card");
             return;
         }
+        topUp(player, card, amount);
+    }
+
+    /** Moves LumiCoins from the wallet onto this card. True if it worked. */
+    public boolean topUp(Player player, CardRecord card, long amount) {
         if (card.blocked()) {
             plugin.msg().send(player, "card.blocked");
-            return;
+            return false;
         }
         if (amount <= 0) {
             plugin.msg().send(player, "general.invalid-amount");
-            return;
+            return false;
         }
         if (card.value() + amount > maxValue) {
             plugin.msg().send(player, "card.max-value", "max", Money.format(maxValue));
-            return;
+            return false;
         }
         if (!plugin.economy().withdraw(player.getUniqueId(), amount, "top up " + card.id())) {
             plugin.msg().send(player, "general.not-enough-money", "amount", Money.format(amount),
                     "balance", Money.format(plugin.data(player).balance()));
-            return;
+            return false;
         }
         card.setValue(card.value() + amount);
         plugin.storage().markDirty();
         plugin.msg().send(player, "card.topped-up", "amount", Money.format(amount), "value", Money.format(card.value()));
         plugin.gates().playSuccess(player);
+        return true;
     }
 
     /** Blocks the player's old cards and gives a new one with the remaining value. */
@@ -217,13 +356,16 @@ public final class CardManager {
             return;
         }
         long value = 0;
+        long auto = 0;
         for (CardRecord card : old) {
             value += card.value();
+            auto = Math.max(auto, card.autoTopUp());
             card.setValue(0);
             card.setBlocked(true);
         }
         CardRecord fresh = new CardRecord(newId(), player.getUniqueId());
         fresh.setValue(Math.min(maxValue, value));
+        fresh.setAutoTopUp(auto);
         if (value > maxValue) {
             plugin.economy().deposit(player.getUniqueId(), value - maxValue, "card value above max after replace");
         }

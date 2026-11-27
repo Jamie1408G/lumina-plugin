@@ -158,6 +158,8 @@ public final class Storage {
                 data.setDistance(s.getLong("distance"));
                 data.setWalkthroughSeen(s.getBoolean("walkthrough-seen"));
                 data.setXaeroWaypoints(s.getBoolean("xaero-waypoints"));
+                data.setPassUntil(s.getLong("pass-until"));
+                data.setPassRenew(s.getBoolean("pass-renew"));
                 data.visitedStations().addAll(s.getStringList("visited"));
                 ConfigurationSection quests = s.getConfigurationSection("quests");
                 if (quests != null) {
@@ -192,6 +194,7 @@ public final class Storage {
                     card.setValue(s.getLong("value"));
                     card.setTappedIn(s.getString("tapped-in"), s.getLong("tap-in-time"));
                     card.setBlocked(s.getBoolean("blocked"));
+                    card.setAutoTopUp(s.getLong("auto-top-up"));
                     card.history().addAll(s.getStringList("history"));
                     cards.put(id.toUpperCase(Locale.ROOT), card);
                 } catch (IllegalArgumentException e) {
@@ -245,6 +248,8 @@ public final class Storage {
             playerYaml.set(base + "distance", data.distance());
             playerYaml.set(base + "walkthrough-seen", data.walkthroughSeen() ? true : null);
             playerYaml.set(base + "xaero-waypoints", data.xaeroWaypoints() ? true : null);
+            playerYaml.set(base + "pass-until", data.passUntil() > 0 ? data.passUntil() : null);
+            playerYaml.set(base + "pass-renew", data.passRenew() ? true : null);
             playerYaml.set(base + "visited", new ArrayList<>(data.visitedStations()));
             for (Map.Entry<String, PlayerData.QuestProgress> entry : data.quests().entrySet()) {
                 String q = base + "quests." + entry.getKey() + ".";
@@ -266,6 +271,7 @@ public final class Storage {
             cardYaml.set(base + "tapped-in", card.tappedIn());
             cardYaml.set(base + "tap-in-time", card.tapInTime());
             cardYaml.set(base + "blocked", card.blocked());
+            cardYaml.set(base + "auto-top-up", card.autoTopUp() > 0 ? card.autoTopUp() : null);
             cardYaml.set(base + "history", new ArrayList<>(card.history()));
         }
 

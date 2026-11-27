@@ -4,6 +4,9 @@ import nl.jamie1408g.lumina.card.CardManager;
 import nl.jamie1408g.lumina.card.FaregateListener;
 import nl.jamie1408g.lumina.card.LrtFareListener;
 import nl.jamie1408g.lumina.card.ModelGateManager;
+import nl.jamie1408g.lumina.card.PassManager;
+import nl.jamie1408g.lumina.machine.MachineMenu;
+import nl.jamie1408g.lumina.machine.TicketMachineManager;
 import nl.jamie1408g.lumina.city.CityManager;
 import nl.jamie1408g.lumina.shop.ShopManager;
 import nl.jamie1408g.lumina.update.Updater;
@@ -58,6 +61,9 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
     private ShopManager shop;
     private Updater updater;
     private JourneyGuide guide;
+    private PassManager passes;
+    private TicketMachineManager machines;
+    private MachineMenu machineMenu;
     private BukkitTask autosave;
 
     @Override
@@ -77,6 +83,8 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
 
         cards = new CardManager(this);
         cards.load();
+        passes = new PassManager(this);
+        passes.load();
         gates = new FaregateListener(this);
         gates.load();
         modelGates = new ModelGateManager(this);
@@ -97,6 +105,10 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
         updater.load();
         guide = new JourneyGuide(this);
         guide.load();
+        machines = new TicketMachineManager(this);
+        machines.load();
+        machineMenu = new MachineMenu(this);
+        machineMenu.load();
 
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getPluginManager().registerEvents(gates, this);
@@ -108,6 +120,9 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(shop, this);
         Bukkit.getPluginManager().registerEvents(updater, this);
         Bukkit.getPluginManager().registerEvents(guide, this);
+        Bukkit.getPluginManager().registerEvents(passes, this);
+        Bukkit.getPluginManager().registerEvents(machines, this);
+        Bukkit.getPluginManager().registerEvents(machineMenu, this);
 
         register("lumina", new LuminaCommand(this));
         register("route", new RouteCommand(this));
@@ -133,6 +148,9 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
         }
         if (guide != null) {
             guide.stopAll();
+        }
+        if (machineMenu != null) {
+            machineMenu.closeAll();
         }
         if (gates != null) {
             gates.closeAll();
@@ -164,6 +182,8 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
         updater.load();
         lrt.load();
         guide.load();
+        passes.load();
+        machineMenu.load();
         startAutosave();
     }
 
@@ -238,6 +258,18 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
 
     public JourneyGuide guide() {
         return guide;
+    }
+
+    public PassManager passes() {
+        return passes;
+    }
+
+    public TicketMachineManager machines() {
+        return machines;
+    }
+
+    public MachineMenu machineMenu() {
+        return machineMenu;
     }
 
     public JobManager jobs() {

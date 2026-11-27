@@ -93,6 +93,7 @@ jobs:
           for cmd in "lumina network" "metro lines" "metro line LML" "metro station civic skyline" \
                      "route LM1 CT3" "route tanjong gateway vivora" "route LM1" "metro places" "metro station awards center" \
                      "route tanjong gateway awards center" "route the gateway skyline plaza" "lumina place list" "route stop" "lumicoins top" \
+                     "lumina machine list" "lumina machine rebuild" "luminacard pass" "luminacard auto" \
                      "luminajob list" "luminajob who" "luminajob requests" "lumina gate list" "lulaws" "lulaws griefing" "lumina city" "lumina district list" "lumina shop" "lumina fares" "lumina walkthrough" "lumina version" "property list" "lquests" "lumina reload" "lumina help"; do
             echo "$cmd" >&3
             sleep 1

@@ -120,6 +120,13 @@ public final class LrtFareListener implements Listener {
             plugin.msg().actionBar(player, "lrt.in-trip-bar", "station", station.name());
             return;
         }
+        if (plugin.passes().active(card.owner())) {
+            // Monthly Pass: the whole ride is free.
+            begin(player, new Ride(station, Pay.FREE, card.id(), 0, now), station);
+            plugin.gates().playSuccess(player);
+            plugin.msg().actionBar(player, "lrt.pass-bar", "station", station.name());
+            return;
+        }
         if (plugin.jobs().freeTravel(player)) {
             plugin.jobs().noteFare(player, start);
             begin(player, new Ride(station, Pay.JOB, card.id(), start, now), station);
@@ -131,7 +138,7 @@ public final class LrtFareListener implements Listener {
             plugin.msg().actionBar(player, "lrt.ride-home-bar", "station", station.name(), "value", Money.format(card.value()));
             return;
         }
-        if (card.value() < start) {
+        if (!plugin.cards().ensureValue(player, card, start)) {
             event.setCancelled(true);
             plugin.msg().send(player, "lrt.insufficient", "fare", Money.format(start), "value", Money.format(card.value()));
             plugin.gates().playDeny(player);
@@ -141,6 +148,7 @@ public final class LrtFareListener implements Listener {
         card.addHistory(FaregateListener.time() + " | LRT from " + station.name() + " | -" + Money.plain(start));
         plugin.storage().markDirty();
         begin(player, new Ride(station, Pay.CARD, card.id(), start, now), station);
+        plugin.cards().afterCharge(player, card);
         plugin.gates().playSuccess(player);
         plugin.msg().actionBar(player, "lrt.paid-bar", "station", station.name(), "fare", Money.format(start),
                 "value", Money.format(card.value()));
@@ -190,13 +198,15 @@ public final class LrtFareListener implements Listener {
                     return;
                 }
                 // They're already off the train, so this can take the card below zero; the next
-                // trip needs a top-up first (fares.min-value-to-enter).
+                // trip needs a top-up first (fares.min-value-to-enter). An Auto Card tops up first.
+                plugin.cards().ensureValue(player, card, extra);
                 card.setValue(card.value() - extra);
                 card.addHistory(FaregateListener.time() + " | LRT " + ride.startName + " > " + station.name()
                         + " | -" + Money.plain(extra));
                 plugin.storage().markDirty();
                 plugin.msg().actionBar(player, "lrt.exit-bar", "station", station.name(), "extra", Money.format(extra),
                         "fare", Money.format(total), "value", Money.format(card.value()));
+                plugin.cards().afterCharge(player, card);
                 if (card.value() < 0) {
                     plugin.msg().send(player, "lrt.below-zero", "value", Money.format(card.value()));
                 }

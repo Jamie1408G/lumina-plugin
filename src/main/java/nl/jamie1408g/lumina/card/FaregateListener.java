@@ -45,10 +45,11 @@ import java.util.Map;
  *   [Faregate]      / station code or name / in, out or both (empty = both)
  *   [Top Up]        / amount
  *   [Card Machine]
+ *   [Ticket Machine]  (opens the ticket machine menu)
  */
 public final class FaregateListener implements Listener {
 
-    private enum SignType { GATE, TOP_UP, MACHINE }
+    private enum SignType { GATE, TOP_UP, MACHINE, TICKET }
 
     /** Which way a gate lets people through. */
     public enum Mode { IN, OUT, BOTH }
@@ -91,6 +92,7 @@ public final class FaregateListener implements Listener {
             case "[faregate]", "[gate]" -> SignType.GATE;
             case "[top up]", "[topup]", "[top-up]" -> SignType.TOP_UP;
             case "[card machine]", "[lumina card]" -> SignType.MACHINE;
+            case "[ticket machine]", "[tickets]", "[gtm]" -> SignType.TICKET;
             default -> null;
         };
     }
@@ -146,6 +148,13 @@ public final class FaregateListener implements Listener {
                 event.setLine(2, plugin.msg().get("signs.topup-line3"));
                 event.setLine(3, plugin.msg().get("signs.topup-line4"));
                 plugin.msg().send(player, "signs.topup-created", "amount", Money.format(amount));
+            }
+            case TICKET -> {
+                event.setLine(0, Msg.color("&1[Ticket Machine]"));
+                event.setLine(1, plugin.msg().get("signs.ticket-line2"));
+                event.setLine(2, plugin.msg().get("signs.ticket-line3"));
+                event.setLine(3, plugin.msg().get("signs.machine-line4"));
+                plugin.msg().send(player, "signs.ticket-created");
             }
             case MACHINE -> {
                 event.setLine(0, Msg.color("&1[Card Machine]"));
@@ -219,6 +228,7 @@ public final class FaregateListener implements Listener {
                 }
             }
             case MACHINE -> plugin.cards().buy(player);
+            case TICKET -> plugin.machineMenu().open(player, null);
         }
     }
 
@@ -264,12 +274,14 @@ public final class FaregateListener implements Listener {
     }
 
     private void tapIn(Player player, CardRecord card, Station station, GateHandle gate) {
-        boolean free = plugin.jobs().freeTravel(player);
+        boolean pass = plugin.passes().active(card.owner());
+        boolean free = !pass && plugin.jobs().freeTravel(player);
         long now = System.currentTimeMillis();
         if (card.tappedIn() != null) {
             boolean turnedBack = card.tappedIn().equals(station.key()) && now - card.tapInTime() <= graceMillis;
-            if (!turnedBack) {
+            if (!turnedBack && !pass) {
                 long penalty = free ? 0 : incompleteFare;
+                plugin.cards().ensureValue(player, card, penalty);
                 if (card.value() < penalty) {
                     plugin.msg().send(player, "gate.penalty-topup", "fare", Money.format(penalty),
                             "value", Money.format(card.value()));
@@ -281,7 +293,7 @@ public final class FaregateListener implements Listener {
                 plugin.msg().send(player, "gate.incomplete-charged", "fare", Money.format(penalty));
             }
         }
-        if (!free && card.value() < minToEnter) {
+        if (!free && !pass && !plugin.cards().ensureValue(player, card, minToEnter)) {
             plugin.msg().send(player, "gate.insufficient-enter", "min", Money.format(minToEnter),
                     "value", Money.format(card.value()));
             plugin.msg().actionBar(player, "gate.insufficient-bar", "value", Money.format(card.value()));
@@ -291,7 +303,7 @@ public final class FaregateListener implements Listener {
         card.setTappedIn(station.key(), now);
         plugin.storage().markDirty();
         gate.open();
-        plugin.msg().actionBar(player, free ? "gate.tap-in-free-bar" : "gate.tap-in-bar",
+        plugin.msg().actionBar(player, pass ? "gate.tap-in-pass-bar" : free ? "gate.tap-in-free-bar" : "gate.tap-in-bar",
                 "station", station.name(), "value", Money.format(card.value()));
         playSuccess(player);
         visit(player, station);
@@ -303,7 +315,8 @@ public final class FaregateListener implements Listener {
             deny(player, gate);
             return;
         }
-        boolean free = plugin.jobs().freeTravel(player);
+        boolean pass = plugin.passes().active(card.owner());
+        boolean free = !pass && plugin.jobs().freeTravel(player);
         Station entry = plugin.network().network().byKey(card.tappedIn());
         int distance = 0;
         long fare;
@@ -319,7 +332,10 @@ public final class FaregateListener implements Listener {
         }
         long noted = 0;
         boolean rideHome = false;
-        if (free) {
+        if (pass) {
+            noted = fare; // the Monthly Pass covers it
+            fare = 0;
+        } else if (free) {
             // Job pass: not charged now, but noted on the job; forgiven only if the job gets completed.
             noted = fare;
             plugin.jobs().noteFare(player, fare);
@@ -328,7 +344,7 @@ public final class FaregateListener implements Listener {
             rideHome = true;
             fare = 0;
         }
-        if (card.value() < fare) {
+        if (fare > 0 && !plugin.cards().ensureValue(player, card, fare)) {
             plugin.msg().send(player, "gate.insufficient-exit", "fare", Money.format(fare),
                     "value", Money.format(card.value()));
             plugin.msg().actionBar(player, "gate.insufficient-bar", "value", Money.format(card.value()));
@@ -338,10 +354,16 @@ public final class FaregateListener implements Listener {
         card.setValue(card.value() - fare);
         card.setTappedIn(null, 0);
         String fromName = entry == null ? "?" : entry.name();
-        card.addHistory(time() + " | " + fromName + " > " + station.name() + " | -" + Money.plain(fare));
+        card.addHistory(time() + " | " + fromName + " > " + station.name() + " | "
+                + (pass ? plugin.msg().get("pass.history") : "-" + Money.plain(fare)));
         plugin.storage().markDirty();
         gate.open();
-        if (free) {
+        if (fare > 0) {
+            plugin.cards().afterCharge(player, card);
+        }
+        if (pass) {
+            plugin.msg().actionBar(player, "gate.tap-out-pass-bar", "station", station.name(), "fare", Money.format(noted));
+        } else if (free) {
             plugin.msg().actionBar(player, "gate.tap-out-job-bar", "fare", Money.format(noted));
         } else if (rideHome) {
             plugin.msg().actionBar(player, "gate.tap-out-ride-home-bar", "value", Money.format(card.value()));

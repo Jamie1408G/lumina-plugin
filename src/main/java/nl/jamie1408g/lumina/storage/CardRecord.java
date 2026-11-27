@@ -18,6 +18,7 @@ public final class CardRecord {
     private String tappedIn;
     private long tapInTime;
     private boolean blocked;
+    private long autoTopUp;
     private final List<String> history = new ArrayList<>();
 
     public CardRecord(String id, UUID owner) {
@@ -64,6 +65,15 @@ public final class CardRecord {
     }
 
     /** Newest first. */
+    /** Auto top-up amount in LumiCoin cents (0 = off): added from the owner's wallet when the card runs low. */
+    public long autoTopUp() {
+        return autoTopUp;
+    }
+
+    public void setAutoTopUp(long autoTopUp) {
+        this.autoTopUp = Math.max(0, autoTopUp);
+    }
+
     public List<String> history() {
         return history;
     }

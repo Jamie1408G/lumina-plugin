@@ -11,7 +11,7 @@ import org.bukkit.entity.Player;
 
 import java.util.List;
 
-/** /luminacard buy | info | topup <amount> | history | replace */
+/** /luminacard buy | info | topup <amount> | auto [off|10|20] | pass [buy|renew|stop] | history | replace */
 public final class CardCommand implements TabExecutor {
 
     private final LuminaPlugin plugin;
@@ -51,6 +51,45 @@ public final class CardCommand implements TabExecutor {
                 }
                 plugin.msg().line(player, "card.info", "id", card.id(), "value", Money.format(card.value()),
                         "status", status);
+                plugin.msg().line(player, "card.info-auto", "auto", card.autoTopUp() > 0
+                        ? plugin.msg().get("card.auto-word-on", "amount", Money.format(card.autoTopUp()))
+                        : plugin.msg().get("card.auto-word-off"));
+                plugin.msg().line(player, "card.info-pass", "pass", plugin.passes().status(card.owner()));
+            }
+            case "auto", "autotopup", "auto-top-up" -> {
+                CardRecord card = plugin.cards().mainCard(player);
+                if (card == null) {
+                    plugin.msg().send(player, "card.no-card-buy", "label", label,
+                            "price", Money.format(plugin.cards().price()));
+                    return true;
+                }
+                List<String> options = autoOptions();
+                if (args.length < 2) {
+                    plugin.msg().send(player, "card.auto-usage", "label", label, "options", String.join("|", options),
+                            "now", card.autoTopUp() > 0 ? Money.format(card.autoTopUp()) : "off");
+                    return true;
+                }
+                if (args[1].equalsIgnoreCase("off")) {
+                    plugin.cards().setAutoTopUp(player, card, 0);
+                    return true;
+                }
+                long amount = Money.parse(args[1]);
+                if (!plugin.cards().autoTopUpAmounts().contains(amount)) {
+                    plugin.msg().send(player, "card.auto-usage", "label", label, "options", String.join("|", options),
+                            "now", card.autoTopUp() > 0 ? Money.format(card.autoTopUp()) : "off");
+                    return true;
+                }
+                plugin.cards().setAutoTopUp(player, card, amount);
+            }
+            case "pass", "monthly" -> {
+                String action = args.length < 2 ? "" : args[1].toLowerCase(java.util.Locale.ROOT);
+                switch (action) {
+                    case "buy" -> plugin.passes().buy(player);
+                    case "stop", "cancel" -> plugin.passes().setRenew(player, false);
+                    case "renew", "resume" -> plugin.passes().setRenew(player, true);
+                    default -> plugin.msg().send(player, "pass.info", "status", plugin.passes().status(player.getUniqueId()),
+                            "label", label, "price", Money.format(plugin.passes().price()), "days", plugin.passes().days());
+                }
             }
             case "topup", "top-up" -> {
                 if (!plugin.cards().commandTopUpAllowed()) {
@@ -86,11 +125,26 @@ public final class CardCommand implements TabExecutor {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return Cmd.filter(args[0], "buy", "info", "topup", "history", "replace");
+            return Cmd.filter(args[0], "buy", "info", "topup", "auto", "pass", "history", "replace");
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("auto")) {
+            return Cmd.filter(autoOptions(), args[1]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("pass")) {
+            return Cmd.filter(args[1], "buy", "stop", "renew");
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("topup")) {
             return Cmd.filter(args[1], "5", "10", "20", "50");
         }
         return List.of();
+    }
+
+    /** "off", "10", "20" */
+    private List<String> autoOptions() {
+        List<String> options = new java.util.ArrayList<>(List.of("off"));
+        for (long amount : plugin.cards().autoTopUpAmounts()) {
+            options.add(Money.plain(amount).replaceAll("\\.00$", ""));
+        }
+        return options;
     }
 }

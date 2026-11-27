@@ -40,7 +40,7 @@ Eén plugin voor Minecraft Lumina (Spigot/Paper/Purpur 1.21.x, getest tegen de 1
 | `/route <van> <naar>` of `/route <naar>` | Reis plannen naar een station of een plaats (zonder "van" start je bij het dichtstbijzijnde station) |
 | `/metro lines \| line <code> \| station <naam> \| places \| nearest` | Netwerkinfo |
 | `/lumicoins` · `pay` · `top` | Wallet, betalen, ranglijst |
-| `/luminacard buy \| info \| topup <bedrag> \| history \| replace` | Lumina Card |
+| `/luminacard buy \| info \| topup <bedrag> \| auto <off\|10\|20> \| pass [buy\|stop\|renew] \| history \| replace` | Lumina Card, auto top-up en Monthly Pass |
 | `/luminajob list \| join \| leave \| duty \| who \| info` | Stadsbanen |
 | `/luminajob request <baan> <wat je nodig hebt> \| requests \| accept [id] \| done [id] \| drop \| cancel [id]` | Klussen aanvragen en aannemen |
 | `/lquests` | Quests en voortgang |
@@ -89,6 +89,23 @@ Plant een speler een reis naar een plaats met een locatie, dan staat bovenin een
 Sta je al op het goede station, dan begint het meteen. `/route stop` stopt de begeleiding; na 45 minuten wachten of 10 minuten lopen stopt hij vanzelf. Instellingen staan in `config.yml` onder `guide:`.
 
 **Xaero's Minimap:** spelers met Xaero's Minimap/World Map doen één keer `/route xaero`. Bij het uitstappen krijgen ze dan ook een waypoint in de chat in het deelformaat van Xaero (`xaero-waypoint:…`), waar ze op *[Add]* klikken; dan staat de bestemming op de minimap, de wereldkaart en als baken in de wereld. Het staat standaard uit, omdat spelers zonder de mod alleen een onleesbare regel zouden zien. Uitzetten: `/route xaero off`.
+
+## Kaartautomaten (ticket machines)
+
+Een kaartautomaat is een 3D-automaat op het station, net als de poortjes gemaakt van display-entities (geen resourcepack nodig): een witte kast van 2 m hoog met een blauwe kop met *LUMINA Tickets*, een schuin aanraakscherm, een kaartlezer, een geldgleuf en een kaartbakje.
+
+- **Plaatsen:** ga staan waar de reiziger straks staat, kijk naar de plek waar de automaat moet komen en doe `/lumina machine place`. De voorkant wijst naar jou; het blok vóór je moet 2 hoog leeg zijn. Verder: `/lumina machine remove` (dichtstbijzijnde), `/lumina machine list` en `/lumina machine rebuild` (na een update van het model).
+- Of een bord met `[Ticket Machine]` op regel 1: klikken opent hetzelfde menu.
+
+Spelers klikken met rechts op de automaat. Het menu:
+
+- **Top up:** LC 5, 10, 20, 50 of 100 van je LumiCoins op je kaart (bedragen in `config.yml` onder `machine.top-up-amounts`). Je hoeft de kaart niet vast te houden.
+- **Auto top-up:** uit, LC 10 of LC 20. Zakt je kaart onder het starttarief of kan hij een rit niet betalen, dan gaat dat bedrag vanzelf van je LumiCoins erop (ook bij de poortjes en in de LRT). Ook met `/luminacard auto 10|20|off`.
+- **Buy a card:** de **Lumina Card** (LC 5), de **Lumina Auto Card** met LC 10 of LC 20 automatisch opwaarderen (LC 5), en de **Monthly Pass**. Heb je al een kaart, dan maak je hem met één klik (gratis) een gewone of Auto Card. Ook: een verloren kaart vervangen.
+- **Monthly Pass:** een abonnement van **LC 100 per 30 dagen** voor onbeperkt reizen met MRT en LRT; bij de poortjes betaal je niets en in de reisgeschiedenis staat *Monthly Pass*. Heb je nog geen kaart, dan krijg je er een bij. De pass verlengt zichzelf van je LumiCoins als hij afloopt (alleen als je online bent, dus je betaalt niet voor maanden dat je niet speelt); dat kun je in het menu of met `/luminacard pass stop` uitzetten (`pass renew` zet het weer aan). Is er niet genoeg LumiCoins, dan stopt de pass gewoon. De pass hoort bij je account, dus blijft als je een verloren kaart vervangt. Prijs en duur: `pass:` in `config.yml`.
+- **Recent trips:** je laatste ritten.
+
+Bij een betaling knippert de kaartlezer groen, bij een fout rood. Het kaartitem krijgt de naam van het type (*Lumina Card*, *Lumina Auto Card*, *Lumina Pass*), met de pass-datum en het opwaardeerbedrag in de beschrijving. `/luminacard info` laat ook auto top-up en de pass zien.
 
 ## Zelf bouwen
 
