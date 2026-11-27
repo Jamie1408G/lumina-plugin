@@ -86,10 +86,10 @@ public final class NetworkService {
         network = fresh;
         planner = new RoutePlanner(network);
         fares = new FareCalculator(
-                Money.fromDouble(config.getDouble("fares.base", 0.80)),
-                Money.fromDouble(config.getDouble("fares.per-km", 0.40)),
-                Money.fromDouble(config.getDouble("fares.min", 0.80)),
-                Money.fromDouble(config.getDouble("fares.max", 3.00)));
+                Money.fromDouble(config.getDouble("fares.base", 1.60)),
+                Money.fromDouble(config.getDouble("fares.per-km", 0.80)),
+                Money.fromDouble(config.getDouble("fares.min", 1.60)),
+                Money.fromDouble(config.getDouble("fares.max", 6.00)));
     }
 
     public Network network() {

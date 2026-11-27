@@ -80,9 +80,9 @@ public final class FaregateListener implements Listener {
         FileConfiguration config = plugin.getConfig();
         openTicks = Math.max(10, config.getInt("faregates.open-ticks", 50));
         radius = Math.max(1, Math.min(4, config.getInt("faregates.search-radius", 2)));
-        incompleteFare = Money.fromDouble(config.getDouble("fares.incomplete-trip-fare", 3.00));
+        incompleteFare = Money.fromDouble(config.getDouble("fares.incomplete-trip-fare", 6.00));
         graceMillis = Math.max(0, config.getLong("fares.same-station-grace-minutes", 5)) * 60_000L;
-        minToEnter = Money.fromDouble(config.getDouble("fares.min-value-to-enter", 0.80));
+        minToEnter = Money.fromDouble(config.getDouble("fares.min-value-to-enter", 1.60));
     }
 
     private static SignType typeOf(String firstLine) {

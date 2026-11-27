@@ -52,7 +52,7 @@ Admin: `/lumina reload | network | setstation | pos1 | pos2 | property … | giv
 
 ## Goed om te weten
 
-- **Tarief:** `basis + per-km × afstand`, begrensd tussen min en max (zie `fares` in `config.yml`). De afstand is de kortste route over het netwerk. Overstappen binnen de poortjes is gratis.
+- **Tarief:** `basis + per-km × afstand`, begrensd tussen min en max (zie `fares` in `config.yml`): standaard LC 1,60 + LC 0,80 per km, maximaal LC 6,00. In-game bekijken met `/lumina fares`, aanpassen met bijv. `/lumina fares set base 2`. De afstand is de kortste route over het netwerk. Overstappen binnen de poortjes is gratis.
 - **Vergeten uit te checken?** Bij de volgende keer inchecken betaal je het `incomplete-trip-fare`. Wie binnen 5 minuten bij hetzelfde station weer uitcheckt, betaalt niets.
 - **Gratis reizen voor banen, alleen als de klus echt af is.** Iemand vraagt hulp met `/luminajob request mrt-staff lift kapot bij LM3`. Wie on duty is in die baan, neemt de klus aan met `/luminajob accept <id>`. Banen met `free-travel` (MRT Staff, Lumina Authority) komen daarna gratis door de poortjes, maar de ritprijzen worden bijgehouden. Ze vervallen pas als de aanvrager met `/luminajob done` bevestigt dat de klus af is; dan is ook de rit terug gratis (binnen 30 min). Bij `drop`, ontslag of als de tijd om is (60 min), wordt de bijgehouden ritprijs alsnog van de kaart afgeschreven. Annuleert de aanvrager, dan betaalt de werker niets.
 - **Salaris:** je verdient alleen tijdens actieve tijd on duty. Wie 5 minuten niet beweegt, verdient tijdelijk niets.
@@ -89,7 +89,7 @@ Elke push naar `main` maakt een genummerde release (`v1.0.0.<build>`) met `Lumin
 
 ## LRT: betalen bij het instappen
 
-Zet bij een lijn in `network.yml` `type: lrt` (standaard is `mrt`). Een LRT heeft geen poortjes, maar kost precies hetzelfde als de MRT: het tarief voor de afstand, met dezelfde instellingen (`fares:` in `config.yml`). Wie bij een LRT-station in een trein (minecart) stapt, betaalt meteen het starttarief (LC 0,80) van zijn Lumina Card; bij het uitstappen op een ander LRT-station gaat de rest voor de afstand eraf. De kaart mag in je hand of ergens in je inventaris zitten.
+Zet bij een lijn in `network.yml` `type: lrt` (standaard is `mrt`). Een LRT heeft geen poortjes, maar kost precies hetzelfde als de MRT: het tarief voor de afstand, met dezelfde instellingen (`fares:` in `config.yml`). Wie bij een LRT-station in een trein (minecart) stapt, betaalt meteen het starttarief (LC 1,60) van zijn Lumina Card; bij het uitstappen op een ander LRT-station gaat de rest voor de afstand eraf. De kaart mag in je hand of ergens in je inventaris zitten.
 
 - **Geen kaart of minder dan het starttarief?** Dan kun je niet instappen. Kom je bij het uitstappen tekort, dan komt je kaart onder nul en moet je eerst opwaarderen.
 - **Gratis met een baan:** wie een klus heeft aangenomen in een baan met `free-travel`, rijdt gratis mee. Net als bij de poortjes wordt de ritprijs bijgehouden en vervalt die pas als de aanvrager de klus bevestigt. Ook de gratis rit terug na een klus geldt.

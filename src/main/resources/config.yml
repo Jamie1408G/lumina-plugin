@@ -46,16 +46,17 @@ card:
 
 fares:
   # Fare = base + per-km x distance (1 km = 1000 blocks), between min and max.
-  base: 0.80
-  per-km: 0.40
-  min: 0.80
-  max: 3.00
+  # Change these in game with /lumina fares set <name> <amount>.
+  base: 1.60
+  per-km: 0.80
+  min: 1.60
+  max: 6.00
   # Charged when a trip has no tap-in or no tap-out.
-  incomplete-trip-fare: 3.00
+  incomplete-trip-fare: 6.00
   # Entering and leaving at the same station within this time is free.
   same-station-grace-minutes: 5
   # Card value needed to tap in.
-  min-value-to-enter: 0.80
+  min-value-to-enter: 1.60
 
 # LRT lines (type: lrt in network.yml) have no faregates but cost the same as the MRT (fares above):
 # getting into a train at an LRT station pays the starting fare from the Lumina Card (held or
