@@ -86,6 +86,58 @@ city:
   district-header: "&b&lDistricts&7: {count}"
   district-entry: " &f{district} &7{area}"
 
+walkthrough:
+  skipped: "Walkthrough skipped. See it again any time with &f/lumina walkthrough"
+  # Each step is one screen: title, subtitle, and the same in chat to read back.
+  # {base}, {step}, {blocks}, {max} and {incomplete} are the current fares.
+  steps:
+    - title: "&b&lWelcome to Lumina"
+      subtitle: "&7Here's a quick tour of how the city works"
+      chat: "&b&lWelcome to Lumina!&7 Here's a quick tour of how the city works.\n &8(Skip it with /lumina walkthrough skip)"
+    - title: "&b&lLumina Card"
+      subtitle: "&7Buy one with &f/luminacard buy"
+      chat: "&b» Lumina Card:&7 buy one with &f/luminacard buy&7 or at a Card Machine, and top it up at a Top Up sign."
+    - title: "&b&lMRT faregates"
+      subtitle: "&7Right-click the gate with your card"
+      chat: "&b» MRT:&7 right-click the faregate with your card in hand to tap in, and again at your destination to tap out. Green means go, red means no."
+    - title: "&b&lFares"
+      subtitle: "&7{base}, then +{step} every {blocks} blocks"
+      chat: "&b» Fares:&7 {base} to start, plus {step} for every {blocks} blocks you travel, at most {max}. Forget to tap in or out and it costs {incomplete}."
+    - title: "&b&lLRT"
+      subtitle: "&7Pay when you get in the train"
+      chat: "&b» LRT:&7 no gates. You pay the starting fare when you get in, and the rest when you get off. Same price as the MRT."
+    - title: "&b&lPlan your trip"
+      subtitle: "&f/route <from> <to>"
+      chat: "&b» Journeys:&7 &f/route <from> <to>&7 plans a trip with transfers, &f/metro&7 shows all lines and stations."
+    - title: "&b&lLumiCoins"
+      subtitle: "&7Lumina's own money"
+      chat: "&b» LumiCoins:&7 earn them with quests (&f/lquests&7) and city jobs, check your wallet with &f/lumicoins&7, and spend them on trips, the shop (&f/lumina shop&7) and apartments (&f/property&7)."
+    - title: "&b&lCity jobs"
+      subtitle: "&7Pick one with &f/luminajob"
+      chat: "&b» Jobs:&7 join one with &f/luminajob join&7, go on duty to show you're available, and earn a salary. Need help? &f/luminajob request <job> <what you need>"
+    - title: "&b&lLumina's laws"
+      subtitle: "&7Read them with &f/lulaws"
+      chat: "&b» Laws:&7 Lumina has its own laws. Read them any time with &f/lulaws&7."
+    - title: "&a&lThat's it!"
+      subtitle: "&7See this again any time: &f/lumina walkthrough"
+      chat: "&aThat's the tour!&7 You can see this walkthrough again at any time by typing &f/lumina walkthrough&7."
+
+fares:
+  show: "&b&lFares &7(MRT and LRT)\n &7Start &f{base}&7, &f+{step}&7 every &f{blocks}&7 blocks, at least &f{min}&7, at most &f{max}\n &7Example: {ex1b} blocks &f{ex1}&7, {ex2b} blocks &f{ex2}&7, 1000 blocks &f{ex3}\n &7Incomplete trip &f{incomplete}&7, needed to tap in &f{enter}\n &8Change: /lumina fares set <name> <amount>"
+  usage: "Use &f/lumina fares set <name> <amount>&7. Names: &f{names}"
+  changed: "&aFare &f{name}&a is now &f{amount}&a. Saved in config.yml."
+
+lrt:
+  no-card: "&cYou need a Lumina Card to ride the LRT at {station}.&7 Get one at a card machine or with &f/luminacard"
+  insufficient: "&cYou need at least {fare} on your card to ride the LRT.&7 Card value: &f{value}&7. Top up first."
+  paid-bar: "&aLRT {station} &8| &7starting fare &f{fare} &8| &7card &f{value}"
+  exit-bar: "&aLRT {station} &8| &7+{extra}, ride &f{fare} &8| &7card &f{value}"
+  below-zero: "&eYour Lumina Card is at &f{value}&e. Top up before your next trip."
+  in-trip-bar: "&aLRT {station} &8| &7part of your trip, paid when you tap out"
+  job-bar: "&aJob pass &8| &7LRT {station}, free once your job is confirmed"
+  job-exit-bar: "&aJob pass &8| &7ride &f{fare}&7 is free once your job is confirmed"
+  ride-home-bar: "&aFree ride home &8| &7Card value &f{value}"
+
 update:
   not-set-up: "Updates aren't set up: put the GitHub repository in &fupdater.github&7 in config.yml."
   busy: "Already checking..."
@@ -153,7 +205,7 @@ route:
 metro:
   usage: "&f/{label} &7lines | line <code> | station <name> | nearest"
   lines-header: "&b&lLumina network"
-  lines-entry: " {color}■ {code} &f{name} &8- &7{count} stations, {first} ↔ {last}"
+  lines-entry: " {color}■ {code} &f{name} &8({type}) &8- &7{count} stations, {first} ↔ {last}"
   lines-hint: "&8Tip: /{label} line <code> shows all stations of a line."
   unknown-line: "&cUnknown line: &f{line}"
   line-header: "{color}&l■ {code} {name}"
@@ -271,8 +323,8 @@ admin:
   overview: "&b&lLumina &7- welcome, &f{player}\n &7Wallet: &b{balance} &8| &7Card: &b{card}\n &7Job: {job} &8| &7Properties: &f{properties}\n &7Trips: &f{trips} &8| &7Travelled: &f{distance} &8| &7Stations: &f{stations}"
   overview-no-card: "&8none"
   overview-no-job: "&8none"
-  player-help: "&b&lCommands\n &f/route <from> <to> &8- &7plan a journey\n &f/metro &8- &7lines and stations\n &f/lumicoins &8- &7your wallet\n &f/luminacard &8- &7your Lumina Card\n &f/luminajob &8- &7city jobs\n &f/lquests &8- &7quests\n &f/property &8- &7apartments\n &f/lulaws &8- &7Lumina's laws\n &f/lumina where &8- &7which district you're in\n &f/lumina shop &8- &7what the city sells"
-  admin-help: "&c&lAdmin\n &f/lumina reload &8| &fnetwork &8| &fsetstation <station>\n &f/lumina gate place <station> [in|out|both] &8| &fgate remove|rebuild|list\n &f/lumina pos1 &8| &fpos2 &8| &fcity set &8| &fdistrict add|remove|list <name>\n &f/lumina property create <id> <price> [district]\n &f/lumina property delete|price|evict <id>\n &f/lumina givecard <player> [value] &8| &fcard|blockcard|unblockcard <id>\n &f/lumina job <player> <job|none> &8| &fquestreset <player> [quest]\n &f/lumicoins give|take|set <player> <amount>\n &f/lumina update &8| &fversion &8- &7new versions from GitHub"
+  player-help: "&b&lCommands\n &f/route <from> <to> &8- &7plan a journey\n &f/metro &8- &7lines and stations\n &f/lumicoins &8- &7your wallet\n &f/luminacard &8- &7your Lumina Card\n &f/luminajob &8- &7city jobs\n &f/lquests &8- &7quests\n &f/property &8- &7apartments\n &f/lulaws &8- &7Lumina's laws\n &f/lumina where &8- &7which district you're in\n &f/lumina shop &8- &7what the city sells\n &f/lumina walkthrough &8- &7a tour of how Lumina works"
+  admin-help: "&c&lAdmin\n &f/lumina reload &8| &fnetwork &8| &fsetstation <station>\n &f/lumina gate place <station> [in|out|both] &8| &fgate remove|rebuild|list\n &f/lumina fares &8| &ffares set <name> <amount>\n &f/lumina pos1 &8| &fpos2 &8| &fcity set &8| &fdistrict add|remove|list <name>\n &f/lumina property create <id> <price> [district]\n &f/lumina property delete|price|evict <id>\n &f/lumina givecard <player> [value] &8| &fcard|blockcard|unblockcard <id>\n &f/lumina job <player> <job|none> &8| &fquestreset <player> [quest]\n &f/lumicoins give|take|set <player> <amount>\n &f/lumina update &8| &fversion &8- &7new versions from GitHub"
   reloaded: "&aReloaded: {lines} lines, {stations} stations, {jobs} jobs, {quests} quests."
   station-set: "&aLocation of &f{station}&a set to {x}, {y}, {z}."
   network-status: "&b&lNetwork&7: {lines} lines, {stations} stations, {missing} without location"

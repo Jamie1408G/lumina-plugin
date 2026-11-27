@@ -61,6 +61,7 @@ public final class CityManager implements Listener {
     private final List<District> districts = new ArrayList<>();
     private final Map<UUID, Spot> spots = new HashMap<>();
     private final Map<UUID, Long> lastWelcome = new HashMap<>();
+    private final Walkthrough walkthrough;
     private Laws laws = Laws.NONE;
     private List<String> lawPages = List.of();
     private boolean enabled = true;
@@ -70,6 +71,11 @@ public final class CityManager implements Listener {
     public CityManager(LuminaPlugin plugin) {
         this.plugin = plugin;
         this.areasFile = new File(plugin.getDataFolder(), "areas.yml");
+        this.walkthrough = new Walkthrough(plugin);
+    }
+
+    public Walkthrough walkthrough() {
+        return walkthrough;
     }
 
     // ------------------------------------------------------------ loading
@@ -81,6 +87,7 @@ public final class CityManager implements Listener {
         hintDelayTicks = Math.max(0, config.getLong("city.laws-hint-delay-ticks", 40));
         loadAreas();
         loadLaws();
+        walkthrough.load();
         spots.clear();
     }
 
@@ -244,13 +251,21 @@ public final class CityManager implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        update(event.getPlayer(), event.getPlayer().getLocation(), false);
+        Player player = event.getPlayer();
+        update(player, player.getLocation(), false);
+        // Spawned in Lumina and never had the tour: start it once they've had a moment to load in.
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (player.isOnline() && enabled && inCity(player.getLocation()) && walkthrough.due(player)) {
+                walkthrough.start(player);
+            }
+        }, 60L);
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         spots.remove(event.getPlayer().getUniqueId());
         lastWelcome.remove(event.getPlayer().getUniqueId());
+        walkthrough.stop(event.getPlayer());
     }
 
     private void update(Player player, Location to, boolean show) {
@@ -266,6 +281,15 @@ public final class CityManager implements Listener {
         boolean entered = now.inCity() && !before.inCity();
         boolean left = !now.inCity() && before.inCity();
         boolean districtChanged = !Objects.equals(before.district(), now.district());
+        if (entered && walkthrough.due(player)) {
+            // First time in Lumina: the walkthrough is the welcome (it starts with it and mentions /lulaws).
+            lastWelcome.put(player.getUniqueId(), System.currentTimeMillis());
+            walkthrough.start(player);
+            return;
+        }
+        if (entered && walkthrough.isRunning(player)) {
+            return; // don't put the welcome title over the walkthrough
+        }
         if (entered && welcome(player, now.district())) {
             return;
         }

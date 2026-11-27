@@ -45,17 +45,34 @@ card:
   max-value: 500.00
 
 fares:
-  # Fare = base + per-km x distance (1 km = 1000 blocks), between min and max.
-  base: 0.80
-  per-km: 0.40
-  min: 0.80
-  max: 3.00
+  # Fare = base, plus per-step for every full step-blocks travelled, between min and max.
+  # With the defaults: 0-149 blocks LC 1.60, 150-299 LC 2.60, 300-449 LC 3.60, ... up to LC 6.00.
+  # Change these in game with /lumina fares set <name> <amount>.
+  base: 1.60
+  per-step: 1.00
+  step-blocks: 150
+  min: 1.60
+  max: 6.00
   # Charged when a trip has no tap-in or no tap-out.
-  incomplete-trip-fare: 3.00
+  incomplete-trip-fare: 6.00
   # Entering and leaving at the same station within this time is free.
   same-station-grace-minutes: 5
   # Card value needed to tap in.
-  min-value-to-enter: 0.80
+  min-value-to-enter: 1.60
+
+# LRT lines (type: lrt in network.yml) have no faregates but cost the same as the MRT (fares above):
+# getting into a train at an LRT station pays the starting fare from the Lumina Card (held or
+# anywhere in the inventory), getting off at another LRT station pays the rest for the distance.
+# Without a card, or with less than the starting fare, you can't get in. Free on a job pass (only
+# if the job gets confirmed), on the free ride home after a job, and when already tapped in
+# through an MRT faregate.
+lrt:
+  enabled: true
+  # How close to the LRT station (set with /lumina setstation) the train must be, in blocks.
+  boarding-radius: 12
+  boarding-height: 12
+  # Getting off and on again (changing seats or trains) within this time continues the same ride.
+  reboard-grace-seconds: 120
 
 faregates:
   # How long the gate stays open (ticks, 20 ticks = 1 second).
@@ -148,6 +165,15 @@ city:
   welcome-cooldown-seconds: 60
   # The laws hint follows the welcome title after this many ticks (20 = 1 second).
   laws-hint-delay-ticks: 40
+
+# ---------- Walkthrough ----------
+# A short tour of how Lumina works, as title screens (plus the same text in chat). Everyone gets it
+# once, the first time they enter Lumina or join while inside it (needs the city border:
+# /lumina city set). /lumina walkthrough shows it again; /lumina walkthrough skip stops it.
+# The steps are in messages.yml under walkthrough.steps.
+walkthrough:
+  show-once-automatically: true
+  seconds-per-step: 5
 
 # ---------- Quests ----------
 quests:

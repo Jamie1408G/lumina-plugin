@@ -4,20 +4,22 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** A metro, BRT or tram line: an ordered list of stations. */
+/** A metro (MRT) or light rail (LRT) line: an ordered list of stations. */
 public final class Line {
 
     private final String code;
     private final String name;
     private final String color;
     private final boolean loop;
+    private final boolean lrt;
     private final List<Station> stations = new ArrayList<>();
 
-    Line(String code, String name, String color, boolean loop) {
+    Line(String code, String name, String color, boolean loop, boolean lrt) {
         this.code = code;
         this.name = name;
         this.color = color == null ? "" : color;
         this.loop = loop;
+        this.lrt = lrt;
     }
 
     public String code() {
@@ -35,6 +37,16 @@ public final class Line {
 
     public boolean isLoop() {
         return loop;
+    }
+
+    /** LRT: no faregates; you pay when you get into the train (see LrtFareListener). */
+    public boolean isLrt() {
+        return lrt;
+    }
+
+    /** "MRT" or "LRT". */
+    public String type() {
+        return lrt ? "LRT" : "MRT";
     }
 
     void add(Station station) {

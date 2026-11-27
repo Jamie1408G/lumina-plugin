@@ -21,7 +21,7 @@ public final class NetworkService {
     private YamlConfiguration yaml = new YamlConfiguration();
     private Network network = new Network();
     private RoutePlanner planner = new RoutePlanner(network);
-    private FareCalculator fares = new FareCalculator(80, 40, 80, 300);
+    private FareCalculator fares = new FareCalculator(160, 100, 150, 160, 600);
 
     public NetworkService(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -49,8 +49,12 @@ public final class NetworkService {
                     continue;
                 }
                 List<String> stations = line.getStringList("stations");
+                String type = line.getString("type", "mrt").trim();
+                if (!type.equalsIgnoreCase("mrt") && !type.equalsIgnoreCase("lrt")) {
+                    plugin.getLogger().warning("network.yml: line " + code + " has type '" + type + "'; use mrt or lrt. Treating it as MRT.");
+                }
                 fresh.addLine(code, line.getString("name", code), line.getString("color", "&f"),
-                        line.getBoolean("loop", false), stations);
+                        line.getBoolean("loop", false), type.equalsIgnoreCase("lrt"), stations);
             }
         }
 
@@ -82,10 +86,11 @@ public final class NetworkService {
         network = fresh;
         planner = new RoutePlanner(network);
         fares = new FareCalculator(
-                Money.fromDouble(config.getDouble("fares.base", 0.80)),
-                Money.fromDouble(config.getDouble("fares.per-km", 0.40)),
-                Money.fromDouble(config.getDouble("fares.min", 0.80)),
-                Money.fromDouble(config.getDouble("fares.max", 3.00)));
+                Money.fromDouble(config.getDouble("fares.base", 1.60)),
+                Money.fromDouble(config.getDouble("fares.per-step", 1.00)),
+                config.getInt("fares.step-blocks", 150),
+                Money.fromDouble(config.getDouble("fares.min", 1.60)),
+                Money.fromDouble(config.getDouble("fares.max", 6.00)));
     }
 
     public Network network() {

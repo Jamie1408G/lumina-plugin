@@ -102,6 +102,20 @@ public final class LuminaCommand implements TabExecutor {
                 plugin.msg().send(sender, "city.where", "place", plugin.city().describe(player.getLocation()));
             }
             case "city" -> city(sender, args);
+            case "walkthrough", "tour", "tutorial" -> {
+                if (!(sender instanceof Player player)) {
+                    playersOnly(sender);
+                    return true;
+                }
+                String action = args.length < 2 ? "" : args[1].toLowerCase(Locale.ROOT);
+                if (action.equals("skip") || action.equals("stop")) {
+                    plugin.city().walkthrough().skip(player);
+                    plugin.msg().send(sender, "walkthrough.skipped");
+                } else {
+                    plugin.city().walkthrough().start(player);
+                }
+            }
+            case "fares", "fare" -> fares(sender, args);
             case "update" -> {
                 if (check(sender, Updater.PERMISSION)) {
                     plugin.msg().send(sender, "update.checking");
@@ -268,6 +282,71 @@ public final class LuminaCommand implements TabExecutor {
         }
     }
 
+    /** Fare settings that /lumina fares can change: name -> config.yml path. */
+    private static final java.util.LinkedHashMap<String, String> FARE_KEYS = new java.util.LinkedHashMap<>();
+
+    static {
+        FARE_KEYS.put("base", "fares.base");
+        FARE_KEYS.put("per-step", "fares.per-step");
+        FARE_KEYS.put("step-blocks", "fares.step-blocks");
+        FARE_KEYS.put("min", "fares.min");
+        FARE_KEYS.put("max", "fares.max");
+        FARE_KEYS.put("incomplete", "fares.incomplete-trip-fare");
+        FARE_KEYS.put("min-to-enter", "fares.min-value-to-enter");
+    }
+
+    /** /lumina fares [set <name> <amount>]: MRT and LRT fares (they're the same). */
+    private void fares(CommandSender sender, String[] args) {
+        if (!check(sender, "lumina.admin.network")) {
+            return;
+        }
+        if (args.length >= 4 && args[1].equalsIgnoreCase("set")) {
+            String name = args[2].toLowerCase(Locale.ROOT);
+            String path = FARE_KEYS.get(name);
+            if (name.equals("step-blocks")) {
+                int blocks;
+                try {
+                    blocks = Integer.parseInt(args[3]);
+                } catch (NumberFormatException e) {
+                    blocks = 0;
+                }
+                if (blocks < 1) {
+                    plugin.msg().send(sender, "fares.usage", "names", String.join(", ", FARE_KEYS.keySet()));
+                    return;
+                }
+                plugin.getConfig().set(path, blocks);
+                plugin.saveConfig();
+                plugin.reload();
+                plugin.msg().send(sender, "fares.changed", "name", name, "amount", blocks + " blocks");
+            } else {
+                long amount = Money.parse(args[3]);
+                if (path == null || amount < 0) {
+                    plugin.msg().send(sender, "fares.usage", "names", String.join(", ", FARE_KEYS.keySet()));
+                    return;
+                }
+                plugin.getConfig().set(path, amount / 100.0);
+                plugin.saveConfig();
+                plugin.reload();
+                plugin.msg().send(sender, "fares.changed", "name", name, "amount", Money.format(amount));
+            }
+        } else if (args.length >= 2) {
+            plugin.msg().send(sender, "fares.usage", "names", String.join(", ", FARE_KEYS.keySet()));
+            return;
+        }
+        var c = plugin.getConfig();
+        var fares = plugin.network().fares();
+        plugin.msg().send(sender, "fares.show",
+                "base", Money.format(Money.fromDouble(c.getDouble("fares.base"))),
+                "step", Money.format(fares.perStep()), "blocks", fares.stepBlocks(),
+                "min", Money.format(Money.fromDouble(c.getDouble("fares.min"))),
+                "max", Money.format(fares.max()),
+                "incomplete", Money.format(Money.fromDouble(c.getDouble("fares.incomplete-trip-fare"))),
+                "enter", Money.format(Money.fromDouble(c.getDouble("fares.min-value-to-enter"))),
+                "ex1", Money.format(fares.fare(fares.stepBlocks() - 1)), "ex1b", fares.stepBlocks() - 1,
+                "ex2", Money.format(fares.fare(fares.stepBlocks() * 2)), "ex2b", fares.stepBlocks() * 2,
+                "ex3", Money.format(fares.fare(1000)));
+    }
+
     /** The pos1/pos2 corners as a box on the map, or null (with a message). */
     private CityManager.Box selectionBox(Player player) {
         Location[] sel = plugin.properties().selection(player);
@@ -425,9 +504,9 @@ public final class LuminaCommand implements TabExecutor {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            List<String> subs = new ArrayList<>(List.of("help", "where", "shop"));
+            List<String> subs = new ArrayList<>(List.of("help", "where", "shop", "walkthrough"));
             if (sender.hasPermission("lumina.admin")) {
-                subs.addAll(List.of("reload", "setstation", "network", "pos1", "pos2", "city", "district", "property", "gate", "update", "version", "givecard",
+                subs.addAll(List.of("reload", "setstation", "network", "pos1", "pos2", "city", "district", "property", "gate", "fares", "update", "version", "givecard",
                         "card", "blockcard", "unblockcard", "job", "questreset"));
             }
             return Cmd.filter(subs, args[0]);
@@ -442,6 +521,8 @@ public final class LuminaCommand implements TabExecutor {
                 case "property" -> Cmd.filter(args[1], "create", "delete", "price", "evict");
                 case "gate", "gates" -> Cmd.filter(args[1], "place", "remove", "rebuild", "list");
                 case "city" -> Cmd.filter(args[1], "set", "info");
+                case "fares", "fare" -> Cmd.filter(args[1], "set");
+                case "walkthrough", "tour", "tutorial" -> Cmd.filter(args[1], "skip");
                 case "district", "districts" -> Cmd.filter(args[1], "add", "remove", "list");
                 case "givecard", "job", "questreset" -> Cmd.filter(plugin.storage().knownNames(), args[1]);
                 default -> List.of();
@@ -453,6 +534,9 @@ public final class LuminaCommand implements TabExecutor {
                 ids.add(role.id());
             }
             return Cmd.filter(ids, args[2]);
+        }
+        if (args.length == 3 && (sub.equals("fares") || sub.equals("fare")) && args[1].equalsIgnoreCase("set")) {
+            return Cmd.filter(args[2], FARE_KEYS.keySet().toArray(new String[0]));
         }
         if (args.length >= 3 && (sub.equals("gate") || sub.equals("gates")) && args[1].equalsIgnoreCase("place")) {
             List<String> options = new ArrayList<>(plugin.network().network().completions(args[args.length - 1]));
