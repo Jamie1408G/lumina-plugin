@@ -96,3 +96,12 @@ Zet bij een lijn in `network.yml` `type: lrt` (standaard is `mrt`). Een LRT heef
 - **Al ingecheckt via een MRT-poortje?** Dan hoort de LRT-rit bij die reis en betaal je bij het uitchecken.
 - Overstappen, uitstappen en weer instappen of van stoel wisselen binnen 2 minuten telt als dezelfde rit.
 - Zet de LRT-stations met `/lumina setstation <code>` op het perron; de trein moet binnen 12 blokken van dat punt staan (`lrt.boarding-radius`).
+
+## Rondleiding voor nieuwe spelers
+
+De eerste keer dat iemand Lumina binnenkomt (of inlogt terwijl hij al in Lumina staat), krijgt hij één keer een korte rondleiding op zijn scherm. Die bestaat uit tien titelschermen van 5 seconden, met dezelfde tekst in de chat om terug te lezen. Ze gaan over de Lumina Card, de MRT-poortjes, de tarieven (altijd de actuele bedragen), betalen in de LRT, `/route`, LumiCoins, banen en `/lulaws`. Aan het eind staat dat je de rondleiding altijd opnieuw kunt zien met `/lumina walkthrough`.
+
+- `/lumina walkthrough skip` stopt de rondleiding; hij komt daarna niet meer vanzelf.
+- Logt iemand halverwege uit, dan krijgt hij de rondleiding de volgende keer opnieuw.
+- Je hebt een stadsgrens nodig (`/lumina city set`), anders weet de plugin niet wanneer iemand in Lumina is.
+- De tekst staat in `messages.yml` onder `walkthrough.steps`, de instellingen in `config.yml` onder `walkthrough:`.

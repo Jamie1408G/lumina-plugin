@@ -31,6 +31,7 @@ public final class PlayerData {
 
     private int trips;
     private long distance;
+    private boolean walkthroughSeen;
     private final Set<String> visitedStations = new LinkedHashSet<>();
     private final Map<String, QuestProgress> quests = new HashMap<>();
 
@@ -113,6 +114,15 @@ public final class PlayerData {
 
     public void setDistance(long distance) {
         this.distance = distance;
+    }
+
+    /** Seen (or skipped) the Lumina walkthrough. */
+    public boolean walkthroughSeen() {
+        return walkthroughSeen;
+    }
+
+    public void setWalkthroughSeen(boolean walkthroughSeen) {
+        this.walkthroughSeen = walkthroughSeen;
     }
 
     public Set<String> visitedStations() {

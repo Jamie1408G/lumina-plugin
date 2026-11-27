@@ -102,6 +102,19 @@ public final class LuminaCommand implements TabExecutor {
                 plugin.msg().send(sender, "city.where", "place", plugin.city().describe(player.getLocation()));
             }
             case "city" -> city(sender, args);
+            case "walkthrough", "tour", "tutorial" -> {
+                if (!(sender instanceof Player player)) {
+                    playersOnly(sender);
+                    return true;
+                }
+                String action = args.length < 2 ? "" : args[1].toLowerCase(Locale.ROOT);
+                if (action.equals("skip") || action.equals("stop")) {
+                    plugin.city().walkthrough().skip(player);
+                    plugin.msg().send(sender, "walkthrough.skipped");
+                } else {
+                    plugin.city().walkthrough().start(player);
+                }
+            }
             case "fares", "fare" -> fares(sender, args);
             case "update" -> {
                 if (check(sender, Updater.PERMISSION)) {
@@ -470,7 +483,7 @@ public final class LuminaCommand implements TabExecutor {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            List<String> subs = new ArrayList<>(List.of("help", "where", "shop"));
+            List<String> subs = new ArrayList<>(List.of("help", "where", "shop", "walkthrough"));
             if (sender.hasPermission("lumina.admin")) {
                 subs.addAll(List.of("reload", "setstation", "network", "pos1", "pos2", "city", "district", "property", "gate", "fares", "update", "version", "givecard",
                         "card", "blockcard", "unblockcard", "job", "questreset"));
@@ -488,6 +501,7 @@ public final class LuminaCommand implements TabExecutor {
                 case "gate", "gates" -> Cmd.filter(args[1], "place", "remove", "rebuild", "list");
                 case "city" -> Cmd.filter(args[1], "set", "info");
                 case "fares", "fare" -> Cmd.filter(args[1], "set");
+                case "walkthrough", "tour", "tutorial" -> Cmd.filter(args[1], "skip");
                 case "district", "districts" -> Cmd.filter(args[1], "add", "remove", "list");
                 case "givecard", "job", "questreset" -> Cmd.filter(plugin.storage().knownNames(), args[1]);
                 default -> List.of();

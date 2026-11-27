@@ -164,6 +164,15 @@ city:
   # The laws hint follows the welcome title after this many ticks (20 = 1 second).
   laws-hint-delay-ticks: 40
 
+# ---------- Walkthrough ----------
+# A short tour of how Lumina works, as title screens (plus the same text in chat). Everyone gets it
+# once, the first time they enter Lumina or join while inside it (needs the city border:
+# /lumina city set). /lumina walkthrough shows it again; /lumina walkthrough skip stops it.
+# The steps are in messages.yml under walkthrough.steps.
+walkthrough:
+  show-once-automatically: true
+  seconds-per-step: 5
+
 # ---------- Quests ----------
 quests:
   # Timezone for daily/weekly resets.

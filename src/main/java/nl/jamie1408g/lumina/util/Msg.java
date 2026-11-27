@@ -63,6 +63,15 @@ public final class Msg {
         return color(text);
     }
 
+    /** A list of sections from messages.yml (falls back to the built-in one if the key is missing). */
+    public java.util.List<java.util.Map<?, ?>> mapList(String key) {
+        java.util.List<java.util.Map<?, ?>> list = messages.getMapList(key);
+        if (list.isEmpty() && defaults != null) {
+            list = defaults.getMapList(key);
+        }
+        return list;
+    }
+
     /** Sends a message with the prefix. Use "\n" in messages.yml for several lines. */
     public void send(CommandSender to, String key, Object... placeholders) {
         String prefix = get("prefix");
