@@ -163,17 +163,24 @@ public final class PropertyManager implements Listener {
 
     // ------------------------------------------------------------ admin
 
+    /** Number of positions: pos1 and pos2 for properties and districts, pos1 to pos6 for the city border. */
+    public static final int POSITIONS = 6;
+
     public void setPos(Player player, int index) {
-        Location[] selection = selections.computeIfAbsent(player.getUniqueId(), k -> new Location[2]);
+        Location[] selection = selections.computeIfAbsent(player.getUniqueId(), k -> new Location[POSITIONS]);
         selection[index] = player.getLocation().getBlock().getLocation();
         Location l = selection[index];
         plugin.msg().send(player, "property.pos-set", "pos", index + 1,
                 "x", l.getBlockX(), "y", l.getBlockY(), "z", l.getBlockZ());
     }
 
-    /** The two corners set with /lumina pos1 and pos2 (either may be null), or null. */
+    /** The positions set with /lumina pos1 to pos6 (any may be null), or null. */
     public Location[] selection(Player player) {
         return selections.get(player.getUniqueId());
+    }
+
+    public void clearPositions(Player player) {
+        selections.remove(player.getUniqueId());
     }
 
     public Property create(Player player, String id, long price, String district) {

@@ -2,8 +2,10 @@ package nl.jamie1408g.lumina.city;
 
 import nl.jamie1408g.lumina.LuminaPlugin;
 import org.bukkit.Bukkit;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -17,6 +19,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,7 +32,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Lumina's city border and districts (boxes on the map, any height, stored in areas.yml) and its
+ * Lumina's city border (a shape of six points, see {@link CityBorder}) and districts (boxes on the
+ * map), both any height and stored in areas.yml, and its
  * laws (laws.yml). Crossing the border shows "Welcome to Lumina", followed every time by a short
  * hint that /lulaws opens the laws. Walking into a district shows its name on the action bar.
  */
@@ -57,7 +61,8 @@ public final class CityManager implements Listener {
 
     private final LuminaPlugin plugin;
     private final File areasFile;
-    private Box city;
+    private CityBorder city;
+    private final Map<UUID, BukkitRunnable> previews = new HashMap<>();
     private final List<District> districts = new ArrayList<>();
     private final Map<UUID, Spot> spots = new HashMap<>();
     private final Map<UUID, Long> lastWelcome = new HashMap<>();
@@ -111,7 +116,7 @@ public final class CityManager implements Listener {
             return;
         }
         YamlConfiguration yml = YamlConfiguration.loadConfiguration(areasFile);
-        city = box(yml.getConfigurationSection("city"));
+        city = border(yml.getConfigurationSection("city"));
         ConfigurationSection ds = yml.getConfigurationSection("districts");
         if (ds != null) {
             for (String key : ds.getKeys(false)) {
@@ -122,6 +127,37 @@ public final class CityManager implements Listener {
                 }
             }
         }
+    }
+
+    /** The city border: a list of points, or the old two-corner rectangle (min-x ... max-z). */
+    private CityBorder border(ConfigurationSection s) {
+        if (s == null || !s.contains("world")) {
+            return null;
+        }
+        String world = s.getString("world");
+        if (!s.isList("points")) {
+            Box b = box(s);
+            return b == null ? null : CityBorder.rectangle(world, b.minX(), b.minZ(), b.maxX(), b.maxZ());
+        }
+        List<CityBorder.Point> points = new ArrayList<>();
+        for (String text : s.getStringList("points")) {
+            CityBorder.Point p = CityBorder.Point.parse(text);
+            if (p == null) {
+                plugin.getLogger().warning("areas.yml: city point '" + text + "' isn't \"x z\", skipped.");
+            } else {
+                points.add(p);
+            }
+        }
+        if (points.size() < 3) {
+            plugin.getLogger().warning("areas.yml: the city border needs at least 3 points, so Lumina has no border now.");
+            return null;
+        }
+        CityBorder border = new CityBorder(world, points);
+        if (border.problem() != null) {
+            plugin.getLogger().warning("areas.yml: the city border crosses itself or has no area (" + border.problem()
+                    + "). Set it again with /lumina pos1 to pos6 and /lumina city set.");
+        }
+        return border;
     }
 
     private static Box box(ConfigurationSection s) {
@@ -143,7 +179,8 @@ public final class CityManager implements Listener {
         YamlConfiguration yml = new YamlConfiguration();
         yml.options().setHeader(List.of("Lumina's city border and districts. Edit in game with /lumina city and /lumina district."));
         if (city != null) {
-            put(yml, "city", city);
+            yml.set("city.world", city.world());
+            yml.set("city.points", city.pointTexts());
         }
         for (int i = 0; i < districts.size(); i++) {
             yml.set("districts." + i + ".name", districts.get(i).name());
@@ -159,7 +196,7 @@ public final class CityManager implements Listener {
 
     // ------------------------------------------------------------ areas
 
-    public Box city() {
+    public CityBorder city() {
         return city;
     }
 
@@ -167,8 +204,8 @@ public final class CityManager implements Listener {
         return Collections.unmodifiableList(districts);
     }
 
-    public void setCity(Box box) {
-        city = box;
+    public void setCity(CityBorder border) {
+        city = border;
         saveAreas();
     }
 
@@ -188,7 +225,95 @@ public final class CityManager implements Listener {
     }
 
     public boolean inCity(Location l) {
-        return l.getWorld() != null && city != null && city.contains(l.getWorld().getName(), l.getBlockX(), l.getBlockZ());
+        CityBorder c = city;
+        return l.getWorld() != null && c != null && c.contains(l.getWorld().getName(), l.getBlockX(), l.getBlockZ());
+    }
+
+    // ------------------------------------------------------------ showing the border
+
+    public static final int PREVIEW_SECONDS = 20;
+    public static final int PREVIEW_RADIUS = 48;
+    private static final Particle.DustOptions EDGE = new Particle.DustOptions(Color.fromRGB(0x55, 0xFF, 0xFF), 1.5f);
+
+    /**
+     * Shows the border to this player only, as particles at their height, for PREVIEW_SECONDS:
+     * a dotted line along the edges within PREVIEW_RADIUS blocks, and a column at each point.
+     */
+    public void showBorder(Player player) {
+        CityBorder border = city;
+        stopPreview(player.getUniqueId());
+        if (border == null) {
+            return;
+        }
+        UUID id = player.getUniqueId();
+        BukkitRunnable task = new BukkitRunnable() {
+            private int runs;
+
+            @Override
+            public void run() {
+                if (!player.isOnline() || runs++ >= PREVIEW_SECONDS * 2
+                        || !player.getWorld().getName().equals(border.world())) {
+                    cancel();
+                    previews.remove(id, this);
+                    return;
+                }
+                drawBorder(player, border);
+            }
+        };
+        previews.put(id, task);
+        task.runTaskTimer(plugin, 0L, 10L);
+    }
+
+    private void stopPreview(UUID id) {
+        BukkitRunnable old = previews.remove(id);
+        if (old != null) {
+            try {
+                old.cancel();
+            } catch (IllegalStateException ignored) {
+                // never got scheduled
+            }
+        }
+    }
+
+    private static void drawBorder(Player player, CityBorder border) {
+        Location l = player.getLocation();
+        double px = l.getX();
+        double pz = l.getZ();
+        double y = l.getY() + 1.0;
+        double r = PREVIEW_RADIUS;
+        List<CityBorder.Point> points = border.points();
+        int n = points.size();
+        for (int i = 0; i < n; i++) {
+            CityBorder.Point a = points.get(i);
+            CityBorder.Point b = points.get((i + 1) % n);
+            double ax = a.x() + 0.5;
+            double az = a.z() + 0.5;
+            double dx = b.x() - a.x();
+            double dz = b.z() - a.z();
+            double length = Math.hypot(dx, dz);
+            // The point's column, if it's near.
+            if (Math.hypot(ax - px, az - pz) <= r) {
+                for (int h = 0; h < 10; h++) {
+                    player.spawnParticle(Particle.END_ROD, ax, y - 1 + h * 0.5, az, 1, 0, 0, 0, 0);
+                }
+            }
+            if (length == 0) {
+                continue;
+            }
+            // Only the part of this line within the radius: one dot per block.
+            double t = ((px - ax) * dx + (pz - az) * dz) / (length * length);
+            double side = Math.abs((px - ax) * dz - (pz - az) * dx) / length;
+            if (side > r) {
+                continue;
+            }
+            double half = Math.sqrt(r * r - side * side) / length;
+            double from = Math.max(0, t - half);
+            double to = Math.min(1, t + half);
+            double step = 1.0 / length;
+            for (double s = from; s <= to; s += step) {
+                player.spawnParticle(Particle.DUST, ax + dx * s, y, az + dz * s, 1, 0, 0, 0, 0, EDGE);
+            }
+        }
     }
 
     /** The smallest district containing this spot, so a small district inside a bigger one wins. */
@@ -266,6 +391,7 @@ public final class CityManager implements Listener {
         spots.remove(event.getPlayer().getUniqueId());
         lastWelcome.remove(event.getPlayer().getUniqueId());
         walkthrough.stop(event.getPlayer());
+        stopPreview(event.getPlayer().getUniqueId());
     }
 
     private void update(Player player, Location to, boolean show) {

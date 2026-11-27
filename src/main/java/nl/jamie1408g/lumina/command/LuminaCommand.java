@@ -2,11 +2,13 @@ package nl.jamie1408g.lumina.command;
 
 import nl.jamie1408g.lumina.LuminaPlugin;
 import nl.jamie1408g.lumina.card.FaregateListener;
+import nl.jamie1408g.lumina.city.CityBorder;
 import nl.jamie1408g.lumina.city.CityManager;
 import nl.jamie1408g.lumina.card.ModelGateManager;
 import nl.jamie1408g.lumina.jobs.JobManager;
 import nl.jamie1408g.lumina.network.Station;
 import nl.jamie1408g.lumina.property.Property;
+import nl.jamie1408g.lumina.property.PropertyManager;
 import nl.jamie1408g.lumina.shop.ShopManager;
 import nl.jamie1408g.lumina.update.Updater;
 import nl.jamie1408g.lumina.storage.CardRecord;
@@ -14,6 +16,7 @@ import nl.jamie1408g.lumina.storage.PlayerData;
 import nl.jamie1408g.lumina.util.Money;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
@@ -85,13 +88,21 @@ public final class LuminaCommand implements TabExecutor {
                     plugin.msg().line(sender, "admin.network-warning", "warning", warning);
                 }
             }
-            case "pos1", "pos2" -> {
-                if (!check(sender, "lumina.admin.property") || !(sender instanceof Player player)) {
+            case "pos1", "pos2", "pos3", "pos4", "pos5", "pos6" -> {
+                int index = sub.charAt(3) - '1';
+                // pos1 and pos2 are also the corners of properties and districts; pos3 to pos6 are only for the city border.
+                String permission = index < 2 && sender.hasPermission("lumina.admin.property")
+                        ? "lumina.admin.property" : "lumina.admin.city";
+                if (!check(sender, permission)) {
+                    return true;
+                }
+                if (!(sender instanceof Player player)) {
                     playersOnly(sender);
                     return true;
                 }
-                plugin.properties().setPos(player, sub.equals("pos1") ? 0 : 1);
+                plugin.properties().setPos(player, index);
             }
+            case "pos", "positions" -> positions(sender, args);
             case "property" -> property(sender, args);
             case "gate", "gates" -> gate(sender, args);
             case "where" -> {
@@ -363,7 +374,85 @@ public final class LuminaCommand implements TabExecutor {
         return "x " + b.minX() + " to " + b.maxX() + ", z " + b.minZ() + " to " + b.maxZ() + " (" + b.world() + ")";
     }
 
-    /** /lumina city set | info */
+    private static String describe(CityBorder b) {
+        List<String> points = new ArrayList<>();
+        for (CityBorder.Point p : b.points()) {
+            points.add(p.x() + ", " + p.z());
+        }
+        return b.points().size() + " points: " + String.join(" | ", points) + " (" + b.world() + ", "
+                + String.format(Locale.ROOT, "%,d", b.area()) + " blocks)";
+    }
+
+    /**
+     * The city border from pos1 to pos6, in that order, or null (with a message). With only pos1 and
+     * pos2 set it's a plain rectangle, like before.
+     */
+    private CityBorder selectionBorder(Player player) {
+        Location[] sel = plugin.properties().selection(player);
+        List<String> missing = new ArrayList<>();
+        for (int i = 0; i < PropertyManager.POSITIONS; i++) {
+            if (sel == null || sel[i] == null) {
+                missing.add("pos" + (i + 1));
+            }
+        }
+        if (sel != null && sel[0] != null && sel[1] != null && missing.size() == PropertyManager.POSITIONS - 2) {
+            CityManager.Box box = selectionBox(player);
+            return box == null ? null : CityBorder.rectangle(box.world(), box.minX(), box.minZ(), box.maxX(), box.maxZ());
+        }
+        if (!missing.isEmpty()) {
+            plugin.msg().send(player, "city.need-points", "missing", String.join(", ", missing));
+            return null;
+        }
+        World world = sel[0].getWorld();
+        List<CityBorder.Point> points = new ArrayList<>();
+        for (Location l : sel) {
+            if (world == null || !world.equals(l.getWorld())) {
+                plugin.msg().send(player, "city.points-world");
+                return null;
+            }
+            points.add(new CityBorder.Point(l.getBlockX(), l.getBlockZ()));
+        }
+        CityBorder border = new CityBorder(world.getName(), points);
+        CityBorder.Problem problem = border.problem();
+        if (problem == null) {
+            return border;
+        }
+        int n = points.size();
+        switch (problem.kind()) {
+            case SAME_SPOT -> plugin.msg().send(player, "city.same-spot",
+                    "a", problem.first() + 1, "b", problem.second() + 1);
+            case CROSSING -> plugin.msg().send(player, "city.crosses",
+                    "a", problem.first() + 1, "b", (problem.first() + 1) % n + 1,
+                    "c", problem.second() + 1, "d", (problem.second() + 1) % n + 1);
+            case FLAT -> plugin.msg().send(player, "city.flat");
+        }
+        return null;
+    }
+
+    /** /lumina pos [clear]: the positions you've set. */
+    private void positions(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("lumina.admin.property") && !check(sender, "lumina.admin.city")) {
+            return;
+        }
+        if (!(sender instanceof Player player)) {
+            playersOnly(sender);
+            return;
+        }
+        if (args.length >= 2 && args[1].equalsIgnoreCase("clear")) {
+            plugin.properties().clearPositions(player);
+            plugin.msg().send(sender, "city.pos-cleared");
+            return;
+        }
+        Location[] sel = plugin.properties().selection(player);
+        List<String> parts = new ArrayList<>();
+        for (int i = 0; i < PropertyManager.POSITIONS; i++) {
+            Location l = sel == null ? null : sel[i];
+            parts.add("&fpos" + (i + 1) + "&7 " + (l == null ? "-" : l.getBlockX() + ", " + l.getBlockZ()));
+        }
+        plugin.msg().send(sender, "city.pos-list", "list", String.join("&8 | ", parts));
+    }
+
+    /** /lumina city set | show | info */
     private void city(CommandSender sender, String[] args) {
         if (!check(sender, "lumina.admin.city")) {
             return;
@@ -374,16 +463,37 @@ public final class LuminaCommand implements TabExecutor {
                 playersOnly(sender);
                 return;
             }
-            CityManager.Box box = selectionBox(player);
-            if (box != null) {
-                plugin.city().setCity(box);
-                plugin.msg().send(sender, "city.set", "area", describe(box));
+            CityBorder border = selectionBorder(player);
+            if (border != null) {
+                plugin.city().setCity(border);
+                plugin.msg().send(sender, "city.set", "area", describe(border));
+                plugin.msg().send(sender, "city.set-show");
             }
             return;
         }
-        CityManager.Box c = plugin.city().city();
-        plugin.msg().send(sender, c == null ? "city.info-none" : "city.info", "area", c == null ? "" : describe(c),
-                "districts", plugin.city().districts().size());
+        CityBorder c = plugin.city().city();
+        if (action.equals("show")) {
+            if (!(sender instanceof Player player)) {
+                playersOnly(sender);
+                return;
+            }
+            if (c == null) {
+                plugin.msg().send(sender, "city.no-border");
+            } else if (!player.getWorld().getName().equals(c.world())) {
+                plugin.msg().send(sender, "city.show-other-world", "world", c.world());
+            } else {
+                plugin.city().showBorder(player);
+                plugin.msg().send(sender, "city.show", "seconds", CityManager.PREVIEW_SECONDS,
+                        "radius", CityManager.PREVIEW_RADIUS,
+                        "distance", Math.round(c.distanceTo(player.getLocation().getX(), player.getLocation().getZ())));
+            }
+            return;
+        }
+        if (c == null) {
+            plugin.msg().send(sender, "city.no-border");
+            return;
+        }
+        plugin.msg().send(sender, "city.info", "area", describe(c), "districts", plugin.city().districts().size());
     }
 
     /** /lumina district add <name> | remove <name> | list */
@@ -506,7 +616,7 @@ public final class LuminaCommand implements TabExecutor {
         if (args.length == 1) {
             List<String> subs = new ArrayList<>(List.of("help", "where", "shop", "walkthrough"));
             if (sender.hasPermission("lumina.admin")) {
-                subs.addAll(List.of("reload", "setstation", "network", "pos1", "pos2", "city", "district", "property", "gate", "fares", "update", "version", "givecard",
+                subs.addAll(List.of("reload", "setstation", "network", "pos1", "pos2", "pos3", "pos4", "pos5", "pos6", "pos", "city", "district", "property", "gate", "fares", "update", "version", "givecard",
                         "card", "blockcard", "unblockcard", "job", "questreset"));
             }
             return Cmd.filter(subs, args[0]);
@@ -520,7 +630,8 @@ public final class LuminaCommand implements TabExecutor {
                 case "setstation" -> plugin.network().network().completions(args[1]);
                 case "property" -> Cmd.filter(args[1], "create", "delete", "price", "evict");
                 case "gate", "gates" -> Cmd.filter(args[1], "place", "remove", "rebuild", "list");
-                case "city" -> Cmd.filter(args[1], "set", "info");
+                case "city" -> Cmd.filter(args[1], "set", "show", "info");
+                case "pos", "positions" -> Cmd.filter(args[1], "clear");
                 case "fares", "fare" -> Cmd.filter(args[1], "set");
                 case "walkthrough", "tour", "tutorial" -> Cmd.filter(args[1], "skip");
                 case "district", "districts" -> Cmd.filter(args[1], "add", "remove", "list");

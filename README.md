@@ -46,7 +46,7 @@ Eén plugin voor Minecraft Lumina (Spigot/Paper/Purpur 1.21.x, getest tegen de 1
 | `/lquests` | Quests en voortgang |
 | `/property list \| info \| buy \| sell \| mine \| trust \| untrust` | Woningen |
 
-Admin: `/lumina reload | network | setstation | pos1 | pos2 | property … | givecard | card | blockcard | job | questreset` en `/lumicoins give|take|set`. Alle admin-rechten zitten onder `lumina.admin` (standaard alleen voor ops).
+Admin: `/lumina reload | network | setstation | pos1 … pos6 | pos [clear] | city set|show | district … | property … | givecard | card | blockcard | job | questreset` en `/lumicoins give|take|set`. Alle admin-rechten zitten onder `lumina.admin` (standaard alleen voor ops).
 
 **Banen met permissie:** Lumina Authority vraagt standaard `lumina.job.authority`. Geef die permissie aan wie het mag worden, of maak `permission: ""` leeg in `config.yml`.
 
@@ -71,7 +71,23 @@ Daarna staat de jar in `target/Lumina.jar`. Je hebt Java 21 nodig.
 ## Wetten, stadsgrens en wijken
 
 - **Wetten:** `/lulaws` opent het wetboek van Lumina als boek op je scherm (er komt niets in je inventaris). `/lulaws griefing` zoekt één overtreding op in de chat. De tekst staat in `laws.yml`; pas die aan en doe `/lumina reload`.
-- **Stadsgrens:** ga op twee tegenover elkaar liggende hoeken staan met `/lumina pos1` en `/lumina pos2` (hoogte maakt niet uit) en doe `/lumina city set`. Wie Lumina binnenloopt, ziet "Welcome to Lumina" en daarna elke keer een korte regel dat `/lulaws` de wetten opent. Bij vertrek staat "Leaving Lumina" in de actiebalk.
+- **Stadsgrens (6 punten):** loop langs de rand van Lumina en ga op elke hoek staan, op volgorde rondom (met de klok mee of tegen de klok in): `/lumina pos1`, `/lumina pos2`, … `/lumina pos6`. Doe daarna `/lumina city set`. De zes punten worden in die volgorde met rechte lijnen verbonden (pos6 weer terug naar pos1), dus de grens kan elke zeshoekige vorm hebben, ook met een hoek naar binnen. Hoogte maakt niet uit, en een blok precies op de lijn telt als binnen. Wie Lumina binnenloopt, ziet "Welcome to Lumina" en daarna elke keer een korte regel dat `/lulaws` de wetten opent. Bij vertrek staat "Leaving Lumina" in de actiebalk.
+  - **Controleren:** `/lumina city show` laat de grens 20 seconden zien met deeltjes (alleen voor jou): een stippellijn langs de randen binnen 48 blokken en een lichtzuil op elk punt. `/lumina city` toont de punten en de oppervlakte, `/lumina pos` laat zien welke punten je hebt gezet, `/lumina pos clear` wist ze.
+  - **Foutje?** Kruisen twee lijnen elkaar (punten niet op volgorde gezet), staan twee punten op dezelfde plek of liggen alle punten op één rechte lijn, dan zegt `/lumina city set` wat er mis is en verandert er niets.
+  - Zet je alleen `pos1` en `pos2`, dan wordt het net als vroeger een rechthoek. Een bestaande rechthoekige grens in `areas.yml` blijft gewoon werken.
+  - In `areas.yml` staan de punten als `x z`:
+    ```yaml
+    city:
+      world: world
+      points:
+      - 120 -340
+      - 480 -300
+      - 520 60
+      - 300 260
+      - -40 220
+      - -90 -120
+    ```
+    Met de hand mag je er ook meer (of minder, minimaal 3) zetten; doe daarna `/lumina reload`.
 - **Wijken:** zelfde hoeken, dan `/lumina district add Civic Skyline`. De naam verschijnt in de actiebalk zodra je de wijk inloopt; een kleine wijk binnen een grotere wint. `/lumina district list` en `/lumina district remove <naam>` voor beheer. Spelers zien met `/lumina where` waar ze zijn.
 - Teksten staan in `messages.yml` onder `city:`, instellingen in `config.yml` onder `city:`.
 
