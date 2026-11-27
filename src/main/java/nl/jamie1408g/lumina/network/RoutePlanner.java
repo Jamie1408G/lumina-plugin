@@ -40,6 +40,36 @@ public final class RoutePlanner {
         return path == null ? null : toRoute(from, to, path);
     }
 
+    /**
+     * Best route from any of these stations to any of those (for places with several stations):
+     * the same choice plan() makes, fewest transfers first. An empty route when they share a
+     * station (you're already there), or null when none are connected.
+     */
+    public Route planBest(List<Station> from, List<Station> to) {
+        for (Station a : from) {
+            if (to.contains(a)) {
+                return new Route(a, a, List.of());
+            }
+        }
+        int penalty = network.settings().transferPenalty();
+        Route best = null;
+        long bestCost = Long.MAX_VALUE;
+        for (Station a : from) {
+            for (Station b : to) {
+                Route route = plan(a, b);
+                if (route == null) {
+                    continue;
+                }
+                long cost = (long) route.distance() + (long) route.transfers() * penalty;
+                if (cost < bestCost) {
+                    best = route;
+                    bestCost = cost;
+                }
+            }
+        }
+        return best;
+    }
+
     /** Shortest ride distance in blocks (used for fares), or -1 when not connected. */
     public int shortestDistance(Station from, Station to) {
         if (from == null || to == null) {

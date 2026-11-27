@@ -3,6 +3,7 @@ package nl.jamie1408g.lumina.command;
 import nl.jamie1408g.lumina.LuminaPlugin;
 import nl.jamie1408g.lumina.network.Line;
 import nl.jamie1408g.lumina.network.Network;
+import nl.jamie1408g.lumina.network.Place;
 import nl.jamie1408g.lumina.network.Station;
 import nl.jamie1408g.lumina.network.StationLocation;
 import org.bukkit.command.Command;
@@ -13,7 +14,7 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.List;
 
-/** /metro lines | line <code> | station <name> | nearest */
+/** /metro lines | line <code> | station <name> | places | nearest */
 public final class MetroCommand implements TabExecutor {
 
     private final LuminaPlugin plugin;
@@ -61,12 +62,31 @@ public final class MetroCommand implements TabExecutor {
                     plugin.msg().line(sender, "metro.line-loop");
                 }
             }
+            case "places", "place" -> {
+                plugin.msg().line(sender, "metro.places-header", "count", network.places().size());
+                for (Place place : network.places()) {
+                    plugin.msg().line(sender, "metro.places-entry", "place", place.name(), "stations", place.stationNames());
+                }
+                if (network.places().isEmpty()) {
+                    plugin.msg().line(sender, "metro.places-none");
+                }
+            }
             case "station" -> {
-                Station station = args.length < 2 ? null : network.findStation(Cmd.join(args, 1));
-                if (station == null) {
-                    plugin.msg().send(sender, "route.unknown-station", "station", args.length < 2 ? "" : Cmd.join(args, 1));
+                String query = args.length < 2 ? "" : Cmd.join(args, 1);
+                Network.Destination found = network.findDestination(query);
+                if (found == null) {
+                    plugin.msg().send(sender, "route.unknown-destination", "station", query);
                     return true;
                 }
+                if (found.place() != null) {
+                    // A place: say where to alight, then show that station if there's just one.
+                    plugin.msg().line(sender, "metro.place", "place", found.place().name(),
+                            "stations", found.place().stationNames());
+                    if (found.place().stations().size() > 1) {
+                        return true;
+                    }
+                }
+                Station station = found.stations().get(0);
                 List<String> lines = new ArrayList<>();
                 for (String code : station.lineCodes()) {
                     Line line = network.line(code);
@@ -78,6 +98,13 @@ public final class MetroCommand implements TabExecutor {
                 plugin.msg().line(sender, "metro.station-lines", "lines", String.join("&7, ", lines));
                 if (!station.info().isEmpty()) {
                     plugin.msg().line(sender, "metro.station-info", "info", station.info());
+                }
+                List<String> places = new ArrayList<>();
+                for (Place place : network.placesAt(station)) {
+                    places.add(place.name());
+                }
+                if (!places.isEmpty()) {
+                    plugin.msg().line(sender, "metro.station-places", "places", String.join("&7, &f", places));
                 }
                 StationLocation loc = station.location();
                 if (loc != null && sender instanceof Player player && player.getWorld().getName().equals(loc.world())) {
@@ -113,7 +140,7 @@ public final class MetroCommand implements TabExecutor {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return Cmd.filter(args[0], "lines", "line", "station", "nearest");
+            return Cmd.filter(args[0], "lines", "line", "station", "places", "nearest");
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("line")) {
             List<String> codes = new ArrayList<>();
@@ -123,7 +150,7 @@ public final class MetroCommand implements TabExecutor {
             return Cmd.filter(codes, args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("station")) {
-            return plugin.network().network().completions(args[1]);
+            return plugin.network().network().destinationCompletions(args[1]);
         }
         return List.of();
     }

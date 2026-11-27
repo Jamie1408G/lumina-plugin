@@ -39,5 +39,16 @@ station-info:
   "Civic Skyline": "Civic Square, Skyline Plaza"
   "Bukit Simei": "Awards Center, Bukit Town"
 
+# Places: destinations that aren't stations, for the journey planner ("/route Awards Center").
+# Each place belongs to the station where you alight for it. A place near several stations can
+# have a list, like "Expo Hall": ["Expo Town", "Vivora"]; the planner picks the best one.
+# Add them in game with /lumina place add <station> <place>, see them with /metro places.
+places:
+  "The Gateway": "Tanjong Gateway"
+  "Civic Square": "Civic Skyline"
+  "Skyline Plaza": "Civic Skyline"
+  "Awards Center": "Bukit Simei"
+  "Bukit Town": "Bukit Simei"
+
 # Station locations are filled in by /lumina setstation. You can leave this alone.
 locations: {}

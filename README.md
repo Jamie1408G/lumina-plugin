@@ -37,8 +37,8 @@ Eén plugin voor Minecraft Lumina (Spigot/Paper/Purpur 1.21.x, getest tegen de 1
 | Commando | Wat het doet |
 |---|---|
 | `/lumina` | Je overzicht (wallet, kaart, baan, ritten) + hulp |
-| `/route <van> <naar>` of `/route <naar>` | Reis plannen (zonder "van" start je bij het dichtstbijzijnde station) |
-| `/metro lines \| line <code> \| station <naam> \| nearest` | Netwerkinfo |
+| `/route <van> <naar>` of `/route <naar>` | Reis plannen naar een station of een plaats (zonder "van" start je bij het dichtstbijzijnde station) |
+| `/metro lines \| line <code> \| station <naam> \| places \| nearest` | Netwerkinfo |
 | `/lumicoins` · `pay` · `top` | Wallet, betalen, ranglijst |
 | `/luminacard buy \| info \| topup <bedrag> \| history \| replace` | Lumina Card |
 | `/luminajob list \| join \| leave \| duty \| who \| info` | Stadsbanen |
@@ -60,6 +60,21 @@ Admin: `/lumina reload | network | setstation | pos1 … pos6 | pos [clear] | ci
 - **Bescherming van woningen** kan uit met `property.protection: false` als een andere plugin dat al regelt.
 - **Andere plugins** kunnen luisteren naar `nl.jamie1408g.lumina.api.TripCompletedEvent`.
 - **Teksten** staan in `messages.yml` (Engels). Je kunt ze vrij vertalen of aanpassen.
+
+## Plaatsen in de reisplanner
+
+Naast stations kun je ook naar een **plaats** reizen: een bestemming die zelf geen station is, zoals Awards Center of Skyline Plaza. Elke plaats hoort bij het station waar je ervoor uitstapt.
+
+- **Toevoegen (in-game):** `/lumina place add LM3 Awards Center` (station, dan de naam van de plaats). Ligt een plaats bij meer stations, voer het dan nog een keer uit met het andere station; de planner kiest dan de beste reis.
+- **Beheren:** `/lumina place list` en `/lumina place remove Awards Center`. Een plaats mag niet dezelfde naam hebben als een station en geen punt (`.`) bevatten.
+- **Spelers:** `/route Awards Center` (vanaf het dichtstbijzijnde station) of `/route Tanjong Gateway Awards Center`. Onderaan de reis staat dan *Alight at Bukit Simei for Awards Center*. Begin je bij een plaats, dan staat er bij welk station je instapt. `/metro places` toont alle plaatsen, `/metro station Bukit Simei` laat zien voor welke plaatsen je daar uitstapt.
+- **In het bestand:** de plaatsen staan in `network.yml` onder `places:`:
+  ```yaml
+  places:
+    "Awards Center": "Bukit Simei"
+    "Expo Hall": ["Expo Town", "Vivora"]
+  ```
+  Na het aanpassen met de hand: `/lumina reload`. Met `/lumina place` hoeft dat niet.
 
 ## Zelf bouwen
 

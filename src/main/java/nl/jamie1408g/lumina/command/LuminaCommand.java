@@ -6,6 +6,7 @@ import nl.jamie1408g.lumina.city.CityBorder;
 import nl.jamie1408g.lumina.city.CityManager;
 import nl.jamie1408g.lumina.card.ModelGateManager;
 import nl.jamie1408g.lumina.jobs.JobManager;
+import nl.jamie1408g.lumina.network.Place;
 import nl.jamie1408g.lumina.network.Station;
 import nl.jamie1408g.lumina.property.Property;
 import nl.jamie1408g.lumina.property.PropertyManager;
@@ -104,6 +105,7 @@ public final class LuminaCommand implements TabExecutor {
             }
             case "pos", "positions" -> positions(sender, args);
             case "property" -> property(sender, args);
+            case "place", "places" -> place(sender, args);
             case "gate", "gates" -> gate(sender, args);
             case "where" -> {
                 if (!(sender instanceof Player player)) {
@@ -429,6 +431,59 @@ public final class LuminaCommand implements TabExecutor {
         return null;
     }
 
+    /** /lumina place add <station> <place> | remove <place> | list: destinations for the journey planner. */
+    private void place(CommandSender sender, String[] args) {
+        if (!check(sender, "lumina.admin.network")) {
+            return;
+        }
+        String action = args.length < 2 ? "list" : args[1].toLowerCase(Locale.ROOT);
+        switch (action) {
+            case "add" -> {
+                if (args.length < 4) {
+                    plugin.msg().send(sender, "admin.place-usage");
+                    return;
+                }
+                Station station = plugin.network().network().findStation(args[2]);
+                if (station == null) {
+                    plugin.msg().send(sender, "route.unknown-station", "station", args[2]);
+                    return;
+                }
+                String name = Cmd.join(args, 3).trim();
+                if (name.contains(".")) {
+                    plugin.msg().send(sender, "admin.place-dot");
+                    return;
+                }
+                if (!plugin.network().addPlace(name, station)) {
+                    plugin.msg().send(sender, "admin.place-is-station", "place", name);
+                    return;
+                }
+                Place place = plugin.network().network().findPlace(name);
+                plugin.msg().send(sender, "admin.place-added", "place", place == null ? name : place.name(),
+                        "stations", place == null ? station.name() : place.stationNames());
+            }
+            case "remove", "delete" -> {
+                String name = args.length < 3 ? "" : Cmd.join(args, 2).trim();
+                Place place = plugin.network().network().findPlace(name);
+                if (place == null || !plugin.network().removePlace(place.name())) {
+                    plugin.msg().send(sender, "admin.place-unknown", "place", name);
+                    return;
+                }
+                plugin.msg().send(sender, "admin.place-removed", "place", place.name());
+            }
+            case "list" -> {
+                var places = plugin.network().network().places();
+                plugin.msg().line(sender, "metro.places-header", "count", places.size());
+                for (Place place : places) {
+                    plugin.msg().line(sender, "metro.places-entry", "place", place.name(), "stations", place.stationNames());
+                }
+                if (places.isEmpty()) {
+                    plugin.msg().line(sender, "admin.place-usage");
+                }
+            }
+            default -> plugin.msg().send(sender, "admin.place-usage");
+        }
+    }
+
     /** /lumina pos [clear]: the positions you've set. */
     private void positions(CommandSender sender, String[] args) {
         if (!sender.hasPermission("lumina.admin.property") && !check(sender, "lumina.admin.city")) {
@@ -616,7 +671,7 @@ public final class LuminaCommand implements TabExecutor {
         if (args.length == 1) {
             List<String> subs = new ArrayList<>(List.of("help", "where", "shop", "walkthrough"));
             if (sender.hasPermission("lumina.admin")) {
-                subs.addAll(List.of("reload", "setstation", "network", "pos1", "pos2", "pos3", "pos4", "pos5", "pos6", "pos", "city", "district", "property", "gate", "fares", "update", "version", "givecard",
+                subs.addAll(List.of("reload", "setstation", "network", "pos1", "pos2", "pos3", "pos4", "pos5", "pos6", "pos", "city", "place", "district", "property", "gate", "fares", "update", "version", "givecard",
                         "card", "blockcard", "unblockcard", "job", "questreset"));
             }
             return Cmd.filter(subs, args[0]);
@@ -632,12 +687,25 @@ public final class LuminaCommand implements TabExecutor {
                 case "gate", "gates" -> Cmd.filter(args[1], "place", "remove", "rebuild", "list");
                 case "city" -> Cmd.filter(args[1], "set", "show", "info");
                 case "pos", "positions" -> Cmd.filter(args[1], "clear");
+                case "place", "places" -> Cmd.filter(args[1], "add", "remove", "list");
                 case "fares", "fare" -> Cmd.filter(args[1], "set");
                 case "walkthrough", "tour", "tutorial" -> Cmd.filter(args[1], "skip");
                 case "district", "districts" -> Cmd.filter(args[1], "add", "remove", "list");
                 case "givecard", "job", "questreset" -> Cmd.filter(plugin.storage().knownNames(), args[1]);
                 default -> List.of();
             };
+        }
+        if (args.length == 3 && (sub.equals("place") || sub.equals("places"))) {
+            if (args[1].equalsIgnoreCase("add")) {
+                return plugin.network().network().completions(args[2]);
+            }
+            if (args[1].equalsIgnoreCase("remove") || args[1].equalsIgnoreCase("delete")) {
+                List<String> names = new ArrayList<>();
+                for (Place place : plugin.network().network().places()) {
+                    names.add(place.name().replace(' ', '-'));
+                }
+                return Cmd.filter(names, args[2]);
+            }
         }
         if (args.length == 3 && sub.equals("job")) {
             List<String> ids = new ArrayList<>(List.of("none"));

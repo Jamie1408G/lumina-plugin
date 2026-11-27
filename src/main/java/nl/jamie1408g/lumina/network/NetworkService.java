@@ -10,10 +10,11 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 
-/** Loads network.yml, keeps the planner and fares, and saves station locations. */
+/** Loads network.yml, keeps the planner and fares, and saves station locations and places. */
 public final class NetworkService {
 
     private final JavaPlugin plugin;
@@ -65,6 +66,15 @@ public final class NetworkService {
             }
         }
 
+        // places: "Awards Center": "Bukit Simei", or a list of stations for a place near several.
+        ConfigurationSection places = yaml.getConfigurationSection("places");
+        if (places != null) {
+            for (String name : places.getKeys(false)) {
+                List<String> stations = places.isList(name) ? places.getStringList(name) : List.of(places.getString(name, ""));
+                fresh.addPlace(name, stations);
+            }
+        }
+
         ConfigurationSection locations = yaml.getConfigurationSection("locations");
         if (locations != null) {
             for (String name : locations.getKeys(false)) {
@@ -111,6 +121,68 @@ public final class NetworkService {
         return distance < 0 ? fares.max() : fares.fare(distance);
     }
 
+    /**
+     * Adds a place you alight at this station for (or adds the station to an existing place),
+     * saves network.yml and reloads the network. False if the name is taken by a station.
+     */
+    public boolean addPlace(String name, Station station) {
+        String clean = name.trim().replaceAll("\\s+", " ");
+        if (network.byKey(clean) != null) {
+            return false;
+        }
+        Place existing = network.findPlace(clean);
+        String key = existing != null && existing.key().equals(Station.keyOf(clean)) ? yamlKey(existing.name()) : null;
+        List<String> stations = new ArrayList<>();
+        if (key != null) {
+            stations.addAll(yaml.isList("places." + key) ? yaml.getStringList("places." + key)
+                    : List.of(yaml.getString("places." + key, "")));
+        } else {
+            key = clean;
+        }
+        if (stations.stream().noneMatch(s -> network.findStation(s) == station)) {
+            stations.add(station.name());
+        }
+        stations.removeIf(String::isBlank);
+        yaml.set("places." + key, stations.size() == 1 ? stations.get(0) : stations);
+        save();
+        load();
+        return true;
+    }
+
+    /** Removes a place by its exact name. False if there's no such place. */
+    public boolean removePlace(String name) {
+        String key = yamlKey(name);
+        if (key == null) {
+            return false;
+        }
+        yaml.set("places." + key, null);
+        save();
+        load();
+        return true;
+    }
+
+    /** The key under places: in network.yml that is this place name (any spelling), or null. */
+    private String yamlKey(String name) {
+        ConfigurationSection places = yaml.getConfigurationSection("places");
+        if (places == null) {
+            return null;
+        }
+        for (String key : places.getKeys(false)) {
+            if (Station.keyOf(key).equals(Station.keyOf(name))) {
+                return key;
+            }
+        }
+        return null;
+    }
+
+    private void save() {
+        try {
+            yaml.save(file);
+        } catch (IOException e) {
+            plugin.getLogger().log(Level.SEVERE, "Could not save network.yml", e);
+        }
+    }
+
     public void setLocation(Station station, Location location) {
         if (location.getWorld() == null) {
             return;
@@ -122,10 +194,6 @@ public final class NetworkService {
         yaml.set(base + "x", Math.round(location.getX() * 10) / 10.0);
         yaml.set(base + "y", Math.round(location.getY() * 10) / 10.0);
         yaml.set(base + "z", Math.round(location.getZ() * 10) / 10.0);
-        try {
-            yaml.save(file);
-        } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Could not save network.yml", e);
-        }
+        save();
     }
 }

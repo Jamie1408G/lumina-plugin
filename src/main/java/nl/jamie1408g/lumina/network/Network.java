@@ -24,11 +24,27 @@ public final class Network {
     public record Nearest(Station station, double distance) {
     }
 
+    /** Where a journey starts or ends: a station, or a place you alight for. Exactly one is set. */
+    public record Destination(Station station, Place place) {
+        public static Destination of(Station station) {
+            return new Destination(station, null);
+        }
+
+        public List<Station> stations() {
+            return station != null ? List.of(station) : place.stations();
+        }
+
+        public String name() {
+            return station != null ? station.name() : place.name();
+        }
+    }
+
     private static final Pattern CODE = Pattern.compile("[A-Za-z]{1,4}\\d{1,3}[A-Za-z]?");
 
     private final Map<String, Line> lines = new LinkedHashMap<>();
     private final Map<String, Station> stationsByKey = new LinkedHashMap<>();
     private final Map<String, Station> stationsByCode = new HashMap<>();
+    private final Map<String, Place> placesByKey = new LinkedHashMap<>();
     private final List<String> warnings = new ArrayList<>();
     private Settings settings = Settings.defaults();
 
@@ -107,6 +123,114 @@ public final class Network {
             return;
         }
         station.setInfo(info);
+    }
+
+    /**
+     * Adds a place you get to by alighting at one of these stations (codes or names), like
+     * "Awards Center" at "Bukit Simei". Add lines first. Adding a place that exists adds its stations.
+     */
+    public void addPlace(String name, List<String> stationQueries) {
+        if (name == null || name.isBlank()) {
+            return;
+        }
+        String clean = name.trim().replaceAll("\\s+", " ");
+        if (byKey(clean) != null) {
+            warnings.add("Place '" + clean + "' has the same name as a station, so it's ignored.");
+            return;
+        }
+        Place existing = placesByKey.get(Station.keyOf(clean));
+        List<Station> found = new ArrayList<>(existing == null ? List.of() : existing.stations());
+        for (String query : stationQueries) {
+            Station station = findStation(query);
+            if (station == null) {
+                warnings.add("Place '" + clean + "': unknown station '" + query + "'.");
+            } else if (!found.contains(station)) {
+                found.add(station);
+            }
+        }
+        if (found.isEmpty()) {
+            warnings.add("Place '" + clean + "' has no known station, so it's ignored.");
+            return;
+        }
+        placesByKey.put(Station.keyOf(clean), new Place(existing == null ? clean : existing.name(), found));
+    }
+
+    public Collection<Place> places() {
+        return Collections.unmodifiableCollection(placesByKey.values());
+    }
+
+    /** Places you alight at this station for. */
+    public List<Place> placesAt(Station station) {
+        List<Place> result = new ArrayList<>();
+        for (Place place : placesByKey.values()) {
+            if (place.stations().contains(station)) {
+                result.add(place);
+            }
+        }
+        return result;
+    }
+
+    /** A place by name ("Awards Center", "awards-center") or a unique start of it ("awards"). */
+    public Place findPlace(String query) {
+        if (query == null || query.isBlank()) {
+            return null;
+        }
+        String key = Station.keyOf(query);
+        Place exact = placesByKey.get(key);
+        if (exact != null) {
+            return exact;
+        }
+        Place match = null;
+        for (Place place : placesByKey.values()) {
+            if (place.key().startsWith(key)) {
+                if (match != null) {
+                    return null;
+                }
+                match = place;
+            }
+        }
+        return match;
+    }
+
+    /**
+     * A station or a place. Order: station code or exact station name, exact place name, then a
+     * unique start of a station name, then of a place name.
+     */
+    public Destination findDestination(String query) {
+        if (query == null || query.isBlank()) {
+            return null;
+        }
+        Station byCode = stationsByCode.get(query.trim().toUpperCase(Locale.ROOT));
+        if (byCode != null && !byCode.lineCodes().isEmpty()) {
+            return Destination.of(byCode);
+        }
+        Station exact = byKey(query);
+        if (exact != null) {
+            return Destination.of(exact);
+        }
+        Place exactPlace = placesByKey.get(Station.keyOf(query));
+        if (exactPlace != null) {
+            return new Destination(null, exactPlace);
+        }
+        Station station = findStation(query);
+        if (station != null) {
+            return Destination.of(station);
+        }
+        Place place = findPlace(query);
+        return place == null ? null : new Destination(null, place);
+    }
+
+    /** Tab completion for the journey planner: stations and places. */
+    public List<String> destinationCompletions(String prefix) {
+        List<String> result = completions(prefix);
+        String lower = prefix.toLowerCase(Locale.ROOT);
+        for (Place place : placesByKey.values()) {
+            String dashed = place.name().replace(' ', '-');
+            if (dashed.toLowerCase(Locale.ROOT).startsWith(lower)) {
+                result.add(dashed);
+            }
+        }
+        return result;
     }
 
     public List<String> warnings() {
