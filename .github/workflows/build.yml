@@ -1,0 +1,126 @@
+name: Build Lumina
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Show compile errors as annotations
+        run: echo "::add-matcher::.github/maven-problem-matcher.json"
+
+      - name: Build
+        run: mvn -B -U package -Dbuild.number=${{ github.run_number }}
+
+      - name: Upload jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lumina
+          path: target/Lumina.jar
+
+      # Every push to main publishes a numbered release (v1.0.0.<run>) with Lumina.jar and its
+      # SHA-256, marked as the latest. Servers with the updater on download it by themselves.
+      - name: Publish release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(unzip -p target/Lumina.jar plugin.yml | sed -n "s/^version: *['\"]\{0,1\}\([^'\"]*\).*/\1/p" | head -1)
+          echo "Version: $VERSION"
+          (cd target && sha256sum Lumina.jar > Lumina.jar.sha256)
+          gh release delete latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create "v$VERSION" target/Lumina.jar target/Lumina.jar.sha256 \
+            --title "Lumina $VERSION" \
+            --notes "Automatic build of ${GITHUB_SHA::7}. Download Lumina.jar and put it in your server's plugins folder, or let the updater install it (/lumina update)." \
+            --latest
+          # Keep the 10 newest releases.
+          gh release list --limit 100 --json tagName,createdAt \
+            -q '[.[] | select(.tagName | startswith("v"))] | sort_by(.createdAt) | reverse | .[10:] | .[].tagName' \
+            | xargs -r -n1 gh release delete --yes --cleanup-tag
+
+  # Starts a real Paper server with the plugin and runs some console commands.
+  smoke-test:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: Lumina
+          path: server/plugins
+
+      - name: Download Paper
+        working-directory: server
+        run: |
+          VERSION=1.21.11
+          URL=$(curl -fsSL "https://fill.papermc.io/v3/projects/paper/versions/$VERSION/builds" \
+            | jq -r '[.[] | select(.channel == "STABLE" or .channel == "BETA" or .channel == "ALPHA")][0].downloads."server:default".url' || true)
+          if [ -z "$URL" ] || [ "$URL" = "null" ]; then
+            BUILD=$(curl -fsSL "https://api.papermc.io/v2/projects/paper/versions/$VERSION/builds" | jq -r '.builds[-1].build')
+            URL="https://api.papermc.io/v2/projects/paper/versions/$VERSION/builds/$BUILD/downloads/paper-$VERSION-$BUILD.jar"
+          fi
+          echo "Paper: $URL"
+          curl -fsSL -o paper.jar "$URL"
+
+      - name: Run server with Lumina
+        working-directory: server
+        run: |
+          echo "eula=true" > eula.txt
+          printf 'level-type=minecraft\\:flat\ngenerate-structures=false\nview-distance=2\nsimulation-distance=2\nonline-mode=false\n' > server.properties
+          mkfifo console
+          (java -Xmx2G -jar paper.jar --nogui < console > server.out 2>&1; echo "exit $?" >> server.out) &
+          exec 3> console
+          for i in $(seq 1 240); do grep -q 'Done (' server.out && break; sleep 1; done
+          for cmd in "lumina network" "metro lines" "metro line LML" "metro station civic skyline" \
+                     "route LM1 CT3" "route tanjong gateway vivora" "route LM1" "lumicoins top" \
+                     "luminajob list" "luminajob who" "luminajob requests" "lumina gate list" "lulaws" "lulaws griefing" "lumina city" "lumina district list" "lumina shop" "lumina version" "property list" "lquests" "lumina reload" "lumina help"; do
+            echo "$cmd" >&3
+            sleep 1
+          done
+          echo "stop" >&3
+          for i in $(seq 1 60); do grep -q '^exit ' server.out && break; sleep 1; done
+          exec 3>&-
+
+      - name: Check the log
+        if: always()
+        working-directory: server
+        run: |
+          sed -n '/Loading server plugin Lumina/,$p' server.out | sed 's/\x1b\[[0-9;]*m//g' > lumina.log || true
+          python3 - <<'PY'
+          log = open("lumina.log", encoding="utf-8", errors="replace").read()
+          esc = lambda s: s.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          lines = [l for l in log.splitlines() if "Preparing" not in l and "Time elapsed" not in l]
+          chunks, cur = [], ""
+          for l in lines:
+              if len(cur) + len(l) > 3500:
+                  chunks.append(cur); cur = ""
+              cur += l + "\n"
+          chunks.append(cur)
+          for i, c in enumerate(chunks[:9]):
+              print(f"::notice title=Lumina smoke test log {i + 1}::" + esc(c))
+          PY
+          if grep -qiE 'Error occurred while (enabling|loading) Lumina|Exception|nl\.jamie1408g\.lumina\..*\(' lumina.log; then
+            grep -nE -B2 -A12 'Exception|Error occurred' lumina.log | head -80
+            echo "::error::Lumina threw an error, see the log above"
+            exit 1
+          fi
+          grep -q 'Lumina is running' lumina.log || { echo "::error::Lumina did not start"; exit 1; }

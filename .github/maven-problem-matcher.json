@@ -1,0 +1,27 @@
+{
+  "problemMatcher": [
+    {
+      "owner": "maven-javac",
+      "pattern": [
+        {
+          "regexp": "^\\[(ERROR|WARNING)\\]\\s+(\\S+\\.java):\\[(\\d+),(\\d+)\\]\\s+(.*)$",
+          "severity": 1,
+          "file": 2,
+          "line": 3,
+          "column": 4,
+          "message": 5
+        }
+      ]
+    },
+    {
+      "owner": "maven-general",
+      "pattern": [
+        {
+          "regexp": "^\\[(ERROR)\\]\\s+((Failed|Could not|Non-resolvable|The following).*)$",
+          "severity": 1,
+          "message": 2
+        }
+      ]
+    }
+  ]
+}

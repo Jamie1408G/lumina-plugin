@@ -1,0 +1,40 @@
+# Lumina's law book. Players open it with /lulaws and look up one offence with /lulaws <word>.
+# Offences are written as "name | penalty". Run /lumina reload after editing.
+laws:
+  # The book's title (32 letters at most).
+  book-title: "Lumina Law Book 2026"
+  title: "LUMINA"
+  subtitle: "Official Law Book 2026"
+  motto: "One People, One City, One Bright Future."
+  intro:
+    - "These laws apply within Lumina's borders, to citizens and visitors alike."
+    - "Server rules still apply. No fines, no exile."
+  parts:
+    jail:
+      name: "Part A — Jail Offences"
+      note: "Serious crimes • 7 days maximum"
+      kind: "jail"
+      offences:
+        - "Killing a player | 7 days"
+        - "Abuse of power by officials | 6 days + removal from role"
+        - "Vandalism | 5 days"
+        - "Hurting animals | 5 days"
+        - "Griefing | 4 days"
+        - "Traps | 4 days"
+        - "Damaging the MRT | 4 days"
+        - "Attacking a player | 3 days"
+    cwo:
+      name: "Part B — CWO Offences"
+      kind: "CWO"
+      text:
+        - "CWO (Corrective Work Order): instead of jail, you work off minor offences by helping LUPA builders — building, construction, gathering materials or clearing land."
+        - "If you are sentenced to CWO, you MUST help active developers for the amount of hours linked to your offense within 7 days after your offense. If you refuse or avoid, it's standard 5 days jail time."
+      offences:
+        - "Stealing | 3 hours"
+        - "Harassment | 3 hours"
+        - "Building without LUPA approval | 2 hours + build removed"
+        - "Cutting park trees | 2 hours"
+        - "Blocking the MRT | 2 hours"
+        - "Littering, dirt pillars or floating trees | 1 hour"
+  closing:
+    - "Requesting an appeal is possible, if you have thought of compensation and either the authorities or victim of your offense agree."
