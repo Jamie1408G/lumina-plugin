@@ -371,7 +371,8 @@ public final class JobManager implements Listener {
             if (!cards.isEmpty()) {
                 var card = cards.get(0);
                 card.setValue(card.value() - owed);
-                card.addHistory("job #" + job.id + " not completed | -" + Money.plain(owed));
+                card.addHistory(java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM HH:mm"))
+                        + " | job #" + job.id + " not completed | -" + Money.plain(owed));
             } else {
                 long take = Math.min(owed, plugin.economy().balance(worker));
                 if (take > 0) {

@@ -2,6 +2,7 @@ package nl.jamie1408g.lumina;
 
 import nl.jamie1408g.lumina.card.CardManager;
 import nl.jamie1408g.lumina.card.FaregateListener;
+import nl.jamie1408g.lumina.card.LrtFareListener;
 import nl.jamie1408g.lumina.card.ModelGateManager;
 import nl.jamie1408g.lumina.city.CityManager;
 import nl.jamie1408g.lumina.shop.ShopManager;
@@ -48,6 +49,7 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
     private CardManager cards;
     private FaregateListener gates;
     private ModelGateManager modelGates;
+    private LrtFareListener lrt;
     private JobManager jobs;
     private QuestManager quests;
     private PropertyManager properties;
@@ -77,6 +79,8 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
         gates.load();
         modelGates = new ModelGateManager(this);
         modelGates.load();
+        lrt = new LrtFareListener(this);
+        lrt.load();
         jobs = new JobManager(this);
         jobs.load();
         quests = new QuestManager(this);
@@ -93,6 +97,7 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getPluginManager().registerEvents(gates, this);
         Bukkit.getPluginManager().registerEvents(modelGates, this);
+        Bukkit.getPluginManager().registerEvents(lrt, this);
         Bukkit.getPluginManager().registerEvents(jobs, this);
         Bukkit.getPluginManager().registerEvents(properties, this);
         Bukkit.getPluginManager().registerEvents(city, this);
@@ -149,6 +154,7 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
         city.load();
         shop.load();
         updater.load();
+        lrt.load();
         startAutosave();
     }
 

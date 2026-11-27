@@ -100,6 +100,24 @@ public final class CardManager {
         return plugin.storage().card(id);
     }
 
+    /** A Lumina Card anywhere in the player's inventory (hands first), or null. */
+    public CardRecord cardOnPlayer(Player player) {
+        CardRecord held = cardInHand(player);
+        if (held != null) {
+            return held;
+        }
+        for (ItemStack item : player.getInventory().getContents()) {
+            String id = cardId(item);
+            if (id != null) {
+                CardRecord card = plugin.storage().card(id);
+                if (card != null) {
+                    return card;
+                }
+            }
+        }
+        return null;
+    }
+
     public List<CardRecord> activeCards(UUID owner) {
         List<CardRecord> result = new ArrayList<>();
         for (CardRecord card : plugin.storage().cardsOf(owner)) {

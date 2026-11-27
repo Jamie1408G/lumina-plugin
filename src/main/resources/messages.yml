@@ -86,6 +86,14 @@ city:
   district-header: "&b&lDistricts&7: {count}"
   district-entry: " &f{district} &7{area}"
 
+lrt:
+  no-card: "&cYou need a Lumina Card to ride the LRT at {station}.&7 Get one at a card machine or with &f/luminacard"
+  insufficient: "&cNot enough on your card for the LRT ({fare}).&7 Card value: &f{value}&7. Top up first."
+  paid-bar: "&aLRT {station} &8| &7fare &f{fare} &8| &7card &f{value}"
+  in-trip-bar: "&aLRT {station} &8| &7part of your trip, paid when you tap out"
+  job-bar: "&aJob pass &8| &7LRT fare &f{fare}&7 is free once your job is confirmed"
+  ride-home-bar: "&aFree ride home &8| &7Card value &f{value}"
+
 update:
   not-set-up: "Updates aren't set up: put the GitHub repository in &fupdater.github&7 in config.yml."
   busy: "Already checking..."
@@ -153,7 +161,7 @@ route:
 metro:
   usage: "&f/{label} &7lines | line <code> | station <name> | nearest"
   lines-header: "&b&lLumina network"
-  lines-entry: " {color}■ {code} &f{name} &8- &7{count} stations, {first} ↔ {last}"
+  lines-entry: " {color}■ {code} &f{name} &8({type}) &8- &7{count} stations, {first} ↔ {last}"
   lines-hint: "&8Tip: /{label} line <code> shows all stations of a line."
   unknown-line: "&cUnknown line: &f{line}"
   line-header: "{color}&l■ {code} {name}"

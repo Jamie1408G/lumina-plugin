@@ -31,7 +31,7 @@ public final class MetroCommand implements TabExecutor {
                 plugin.msg().line(sender, "metro.lines-header");
                 for (Line line : network.lines()) {
                     plugin.msg().line(sender, "metro.lines-entry", "color", line.color(), "code", line.code(),
-                            "name", line.name(), "count", line.stations().size(),
+                            "name", line.name(), "type", line.type(), "count", line.stations().size(),
                             "first", line.first().name(), "last", line.last().name());
                 }
                 plugin.msg().line(sender, "metro.lines-hint", "label", label);

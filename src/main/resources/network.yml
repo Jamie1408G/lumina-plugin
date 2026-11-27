@@ -18,6 +18,8 @@ lines:
     color: "&b"
     # true if the last station connects back to the first one
     loop: false
+    # mrt (faregates, fare by distance) or lrt (no gates: pay a flat fare when you get in the train)
+    type: mrt
     stations:
       - "LM1 Tanjong Gateway"
       - "LM2 Civic Skyline"

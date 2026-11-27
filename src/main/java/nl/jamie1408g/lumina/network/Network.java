@@ -44,12 +44,17 @@ public final class Network {
      * Adds a line. Each entry is "CODE Name" (like "LM1 Tanjong Gateway") or just a name.
      */
     public void addLine(String code, String name, String color, boolean loop, List<String> entries) {
+        addLine(code, name, color, loop, false, entries);
+    }
+
+    /** Same, with lrt = true for a light rail line (pay on boarding instead of at faregates). */
+    public void addLine(String code, String name, String color, boolean loop, boolean lrt, List<String> entries) {
         String lineCode = code.toUpperCase(Locale.ROOT);
         if (lines.containsKey(lineCode)) {
             warnings.add("Line " + lineCode + " is defined twice; the second one is ignored.");
             return;
         }
-        Line line = new Line(lineCode, name == null || name.isBlank() ? lineCode : name, color, loop);
+        Line line = new Line(lineCode, name == null || name.isBlank() ? lineCode : name, color, loop, lrt);
         for (String raw : entries) {
             if (raw == null || raw.isBlank()) {
                 continue;

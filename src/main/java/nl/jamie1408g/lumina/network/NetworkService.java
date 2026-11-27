@@ -49,8 +49,12 @@ public final class NetworkService {
                     continue;
                 }
                 List<String> stations = line.getStringList("stations");
+                String type = line.getString("type", "mrt").trim();
+                if (!type.equalsIgnoreCase("mrt") && !type.equalsIgnoreCase("lrt")) {
+                    plugin.getLogger().warning("network.yml: line " + code + " has type '" + type + "'; use mrt or lrt. Treating it as MRT.");
+                }
                 fresh.addLine(code, line.getString("name", code), line.getString("color", "&f"),
-                        line.getBoolean("loop", false), stations);
+                        line.getBoolean("loop", false), type.equalsIgnoreCase("lrt"), stations);
             }
         }
 

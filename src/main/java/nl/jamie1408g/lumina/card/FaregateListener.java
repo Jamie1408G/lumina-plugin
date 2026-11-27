@@ -360,7 +360,8 @@ public final class FaregateListener implements Listener {
         }
     }
 
-    private void visit(Player player, Station station) {
+    /** Records a station visit (for stats and the "visit stations" quests). */
+    void visit(Player player, Station station) {
         PlayerData data = plugin.data(player);
         if (data.visitedStations().add(station.key())) {
             plugin.storage().markDirty();
@@ -368,7 +369,7 @@ public final class FaregateListener implements Listener {
         plugin.quests().onStationVisit(player, station);
     }
 
-    private static String time() {
+    static String time() {
         return LocalDateTime.now().format(HISTORY_TIME);
     }
 
