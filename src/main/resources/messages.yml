@@ -89,7 +89,7 @@ city:
 walkthrough:
   skipped: "Walkthrough skipped. See it again any time with &f/lumina walkthrough"
   # Each step is one screen: title, subtitle, and the same in chat to read back.
-  # {base}, {perkm}, {max} and {incomplete} are the current fares.
+  # {base}, {step}, {blocks}, {max} and {incomplete} are the current fares.
   steps:
     - title: "&b&lWelcome to Lumina"
       subtitle: "&7Here's a quick tour of how the city works"
@@ -101,8 +101,8 @@ walkthrough:
       subtitle: "&7Right-click the gate with your card"
       chat: "&b» MRT:&7 right-click the faregate with your card in hand to tap in, and again at your destination to tap out. Green means go, red means no."
     - title: "&b&lFares"
-      subtitle: "&7By distance: {base} + {perkm} per km"
-      chat: "&b» Fares:&7 {base} to start plus {perkm} per km, at most {max}. Forget to tap in or out and it costs {incomplete}."
+      subtitle: "&7{base}, then +{step} every {blocks} blocks"
+      chat: "&b» Fares:&7 {base} to start, plus {step} for every {blocks} blocks you travel, at most {max}. Forget to tap in or out and it costs {incomplete}."
     - title: "&b&lLRT"
       subtitle: "&7Pay when you get in the train"
       chat: "&b» LRT:&7 no gates. You pay the starting fare when you get in, and the rest when you get off. Same price as the MRT."
@@ -123,7 +123,7 @@ walkthrough:
       chat: "&aThat's the tour!&7 You can see this walkthrough again at any time by typing &f/lumina walkthrough&7."
 
 fares:
-  show: "&b&lFares &7(MRT and LRT)\n &7Start &f{base}&7, per km &f{perkm}&7, at least &f{min}&7, at most &f{max}\n &7Example: 1 km &f{km1}&7, 3 km &f{km3}\n &7Incomplete trip &f{incomplete}&7, needed to tap in &f{enter}\n &8Change: /lumina fares set <name> <amount>"
+  show: "&b&lFares &7(MRT and LRT)\n &7Start &f{base}&7, &f+{step}&7 every &f{blocks}&7 blocks, at least &f{min}&7, at most &f{max}\n &7Example: {ex1b} blocks &f{ex1}&7, {ex2b} blocks &f{ex2}&7, 1000 blocks &f{ex3}\n &7Incomplete trip &f{incomplete}&7, needed to tap in &f{enter}\n &8Change: /lumina fares set <name> <amount>"
   usage: "Use &f/lumina fares set <name> <amount>&7. Names: &f{names}"
   changed: "&aFare &f{name}&a is now &f{amount}&a. Saved in config.yml."
 

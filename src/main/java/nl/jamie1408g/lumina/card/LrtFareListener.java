@@ -23,7 +23,7 @@ import java.util.UUID;
 
 /**
  * LRT lines (type: lrt in network.yml) have no faregates, but cost the same as the MRT: the fare
- * for the distance travelled, with the same base, per-km, minimum and maximum (fares: in config.yml).
+ * for the distance travelled, with the same base, steps, minimum and maximum (fares: in config.yml).
  *
  * Getting into a train at an LRT station pays the starting fare from the player's Lumina Card (held
  * or anywhere in the inventory). Getting off at another LRT station pays the rest, so the ride

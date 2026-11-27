@@ -45,10 +45,12 @@ card:
   max-value: 500.00
 
 fares:
-  # Fare = base + per-km x distance (1 km = 1000 blocks), between min and max.
+  # Fare = base, plus per-step for every full step-blocks travelled, between min and max.
+  # With the defaults: 0-149 blocks LC 1.60, 150-299 LC 2.60, 300-449 LC 3.60, ... up to LC 6.00.
   # Change these in game with /lumina fares set <name> <amount>.
   base: 1.60
-  per-km: 0.80
+  per-step: 1.00
+  step-blocks: 150
   min: 1.60
   max: 6.00
   # Charged when a trip has no tap-in or no tap-out.

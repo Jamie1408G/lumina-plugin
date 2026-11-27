@@ -287,7 +287,8 @@ public final class LuminaCommand implements TabExecutor {
 
     static {
         FARE_KEYS.put("base", "fares.base");
-        FARE_KEYS.put("per-km", "fares.per-km");
+        FARE_KEYS.put("per-step", "fares.per-step");
+        FARE_KEYS.put("step-blocks", "fares.step-blocks");
         FARE_KEYS.put("min", "fares.min");
         FARE_KEYS.put("max", "fares.max");
         FARE_KEYS.put("incomplete", "fares.incomplete-trip-fare");
@@ -300,16 +301,34 @@ public final class LuminaCommand implements TabExecutor {
             return;
         }
         if (args.length >= 4 && args[1].equalsIgnoreCase("set")) {
-            String path = FARE_KEYS.get(args[2].toLowerCase(Locale.ROOT));
-            long amount = Money.parse(args[3]);
-            if (path == null || amount < 0) {
-                plugin.msg().send(sender, "fares.usage", "names", String.join(", ", FARE_KEYS.keySet()));
-                return;
+            String name = args[2].toLowerCase(Locale.ROOT);
+            String path = FARE_KEYS.get(name);
+            if (name.equals("step-blocks")) {
+                int blocks;
+                try {
+                    blocks = Integer.parseInt(args[3]);
+                } catch (NumberFormatException e) {
+                    blocks = 0;
+                }
+                if (blocks < 1) {
+                    plugin.msg().send(sender, "fares.usage", "names", String.join(", ", FARE_KEYS.keySet()));
+                    return;
+                }
+                plugin.getConfig().set(path, blocks);
+                plugin.saveConfig();
+                plugin.reload();
+                plugin.msg().send(sender, "fares.changed", "name", name, "amount", blocks + " blocks");
+            } else {
+                long amount = Money.parse(args[3]);
+                if (path == null || amount < 0) {
+                    plugin.msg().send(sender, "fares.usage", "names", String.join(", ", FARE_KEYS.keySet()));
+                    return;
+                }
+                plugin.getConfig().set(path, amount / 100.0);
+                plugin.saveConfig();
+                plugin.reload();
+                plugin.msg().send(sender, "fares.changed", "name", name, "amount", Money.format(amount));
             }
-            plugin.getConfig().set(path, amount / 100.0);
-            plugin.saveConfig();
-            plugin.reload();
-            plugin.msg().send(sender, "fares.changed", "name", args[2].toLowerCase(Locale.ROOT), "amount", Money.format(amount));
         } else if (args.length >= 2) {
             plugin.msg().send(sender, "fares.usage", "names", String.join(", ", FARE_KEYS.keySet()));
             return;
@@ -318,12 +337,14 @@ public final class LuminaCommand implements TabExecutor {
         var fares = plugin.network().fares();
         plugin.msg().send(sender, "fares.show",
                 "base", Money.format(Money.fromDouble(c.getDouble("fares.base"))),
-                "perkm", Money.format(Money.fromDouble(c.getDouble("fares.per-km"))),
+                "step", Money.format(fares.perStep()), "blocks", fares.stepBlocks(),
                 "min", Money.format(Money.fromDouble(c.getDouble("fares.min"))),
                 "max", Money.format(fares.max()),
                 "incomplete", Money.format(Money.fromDouble(c.getDouble("fares.incomplete-trip-fare"))),
                 "enter", Money.format(Money.fromDouble(c.getDouble("fares.min-value-to-enter"))),
-                "km1", Money.format(fares.fare(1000)), "km3", Money.format(fares.fare(3000)));
+                "ex1", Money.format(fares.fare(fares.stepBlocks() - 1)), "ex1b", fares.stepBlocks() - 1,
+                "ex2", Money.format(fares.fare(fares.stepBlocks() * 2)), "ex2b", fares.stepBlocks() * 2,
+                "ex3", Money.format(fares.fare(1000)));
     }
 
     /** The pos1/pos2 corners as a box on the map, or null (with a message). */

@@ -126,7 +126,8 @@ public final class Walkthrough {
         var fares = plugin.network().fares();
         return Msg.color(text
                 .replace("{base}", Money.format(Money.fromDouble(c.getDouble("fares.base"))))
-                .replace("{perkm}", Money.format(Money.fromDouble(c.getDouble("fares.per-km"))))
+                .replace("{step}", Money.format(fares.perStep()))
+                .replace("{blocks}", String.valueOf(fares.stepBlocks()))
                 .replace("{max}", Money.format(fares.max()))
                 .replace("{incomplete}", Money.format(Money.fromDouble(c.getDouble("fares.incomplete-trip-fare")))));
     }
