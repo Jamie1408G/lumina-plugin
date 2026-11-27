@@ -108,6 +108,20 @@ jobs:
       # Free through the faregates while working on an accepted job request (only if it gets completed).
       free-travel: true
 
+# ---------- Updates ----------
+# Lumina checks the GitHub repository's latest release. A newer version is downloaded into the
+# server's update folder and installed on the next restart; nothing has to be replaced by hand.
+# Staff: /lumina update checks now (and downloads), /lumina version shows what's installed.
+# Note: whoever can publish releases to this repository can update this server's plugin.
+updater:
+  # owner/name on GitHub. Must be a public repository. Empty = no updates.
+  github: "Jamie1408G/lumina-plugin"
+  check-every-hours: 6
+  # true: download new versions automatically. false: only tell staff an update is available.
+  auto-download: true
+  # Only install a download whose SHA-256 matches the .sha256 file published with it.
+  require-checksum: true
+
 # ---------- Shop ----------
 # Things the city sells for LumiCoins. Staff place a sign with [Shop] on line 1 and the item id
 # (e.g. lumina-flag) on line 2; players right-click it to buy. item: is a Minecraft item id.

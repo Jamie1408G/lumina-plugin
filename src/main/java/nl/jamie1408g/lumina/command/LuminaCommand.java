@@ -8,6 +8,7 @@ import nl.jamie1408g.lumina.jobs.JobManager;
 import nl.jamie1408g.lumina.network.Station;
 import nl.jamie1408g.lumina.property.Property;
 import nl.jamie1408g.lumina.shop.ShopManager;
+import nl.jamie1408g.lumina.update.Updater;
 import nl.jamie1408g.lumina.storage.CardRecord;
 import nl.jamie1408g.lumina.storage.PlayerData;
 import nl.jamie1408g.lumina.util.Money;
@@ -101,6 +102,17 @@ public final class LuminaCommand implements TabExecutor {
                 plugin.msg().send(sender, "city.where", "place", plugin.city().describe(player.getLocation()));
             }
             case "city" -> city(sender, args);
+            case "update" -> {
+                if (check(sender, Updater.PERMISSION)) {
+                    plugin.msg().send(sender, "update.checking");
+                    plugin.updater().check(sender, true);
+                }
+            }
+            case "version" -> {
+                if (check(sender, Updater.PERMISSION)) {
+                    plugin.updater().status(sender);
+                }
+            }
             case "shop" -> {
                 plugin.msg().line(sender, "shop.list-header", "count", plugin.shop().items().size());
                 for (ShopManager.Item item : plugin.shop().items()) {
@@ -415,7 +427,7 @@ public final class LuminaCommand implements TabExecutor {
         if (args.length == 1) {
             List<String> subs = new ArrayList<>(List.of("help", "where", "shop"));
             if (sender.hasPermission("lumina.admin")) {
-                subs.addAll(List.of("reload", "setstation", "network", "pos1", "pos2", "city", "district", "property", "gate", "givecard",
+                subs.addAll(List.of("reload", "setstation", "network", "pos1", "pos2", "city", "district", "property", "gate", "update", "version", "givecard",
                         "card", "blockcard", "unblockcard", "job", "questreset"));
             }
             return Cmd.filter(subs, args[0]);

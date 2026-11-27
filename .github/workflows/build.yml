@@ -24,7 +24,7 @@ jobs:
         run: echo "::add-matcher::.github/maven-problem-matcher.json"
 
       - name: Build
-        run: mvn -B -U package
+        run: mvn -B -U package -Dbuild.number=${{ github.run_number }}
 
       - name: Upload jar
         uses: actions/upload-artifact@v4
@@ -32,17 +32,25 @@ jobs:
           name: Lumina
           path: target/Lumina.jar
 
-      # Every push to main publishes the jar under Releases -> "latest".
-      - name: Publish latest release
+      # Every push to main publishes a numbered release (v1.0.0.<run>) with Lumina.jar and its
+      # SHA-256, marked as the latest. Servers with the updater on download it by themselves.
+      - name: Publish release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete latest --yes --cleanup-tag || true
-          gh release create latest target/Lumina.jar \
-            --title "Lumina (latest build)" \
-            --notes "Automatic build of ${GITHUB_SHA::7}. Download Lumina.jar below and put it in your server's plugins folder." \
+          VERSION=$(unzip -p target/Lumina.jar plugin.yml | sed -n "s/^version: *['\"]\{0,1\}\([^'\"]*\).*/\1/p" | head -1)
+          echo "Version: $VERSION"
+          (cd target && sha256sum Lumina.jar > Lumina.jar.sha256)
+          gh release delete latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create "v$VERSION" target/Lumina.jar target/Lumina.jar.sha256 \
+            --title "Lumina $VERSION" \
+            --notes "Automatic build of ${GITHUB_SHA::7}. Download Lumina.jar and put it in your server's plugins folder, or let the updater install it (/lumina update)." \
             --latest
+          # Keep the 10 newest releases.
+          gh release list --limit 100 --json tagName,createdAt \
+            -q '[.[] | select(.tagName | startswith("v"))] | sort_by(.createdAt) | reverse | .[10:] | .[].tagName' \
+            | xargs -r -n1 gh release delete --yes --cleanup-tag
 
   # Starts a real Paper server with the plugin and runs some console commands.
   smoke-test:
@@ -84,7 +92,7 @@ jobs:
           for i in $(seq 1 240); do grep -q 'Done (' server.out && break; sleep 1; done
           for cmd in "lumina network" "metro lines" "metro line LML" "metro station civic skyline" \
                      "route LM1 CT3" "route tanjong gateway vivora" "route LM1" "lumicoins top" \
-                     "luminajob list" "luminajob who" "luminajob requests" "lumina gate list" "lulaws" "lulaws griefing" "lumina city" "lumina district list" "lumina shop" "property list" "lquests" "lumina reload" "lumina help"; do
+                     "luminajob list" "luminajob who" "luminajob requests" "lumina gate list" "lulaws" "lulaws griefing" "lumina city" "lumina district list" "lumina shop" "lumina version" "property list" "lquests" "lumina reload" "lumina help"; do
             echo "$cmd" >&3
             sleep 1
           done

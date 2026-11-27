@@ -5,6 +5,7 @@ import nl.jamie1408g.lumina.card.FaregateListener;
 import nl.jamie1408g.lumina.card.ModelGateManager;
 import nl.jamie1408g.lumina.city.CityManager;
 import nl.jamie1408g.lumina.shop.ShopManager;
+import nl.jamie1408g.lumina.update.Updater;
 import nl.jamie1408g.lumina.command.CardCommand;
 import nl.jamie1408g.lumina.command.JobCommand;
 import nl.jamie1408g.lumina.command.LawsCommand;
@@ -52,6 +53,7 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
     private PropertyManager properties;
     private CityManager city;
     private ShopManager shop;
+    private Updater updater;
     private BukkitTask autosave;
 
     @Override
@@ -85,6 +87,8 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
         city.load();
         shop = new ShopManager(this);
         shop.load();
+        updater = new Updater(this);
+        updater.load();
 
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getPluginManager().registerEvents(gates, this);
@@ -93,6 +97,7 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(properties, this);
         Bukkit.getPluginManager().registerEvents(city, this);
         Bukkit.getPluginManager().registerEvents(shop, this);
+        Bukkit.getPluginManager().registerEvents(updater, this);
 
         register("lumina", new LuminaCommand(this));
         register("route", new RouteCommand(this));
@@ -143,6 +148,7 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
         properties.loadSettings();
         city.load();
         shop.load();
+        updater.load();
         startAutosave();
     }
 
@@ -201,6 +207,10 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
 
     public ModelGateManager modelGates() {
         return modelGates;
+    }
+
+    public Updater updater() {
+        return updater;
     }
 
     public ShopManager shop() {

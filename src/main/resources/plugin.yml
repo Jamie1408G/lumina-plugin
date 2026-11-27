@@ -1,5 +1,5 @@
 name: Lumina
-version: '${project.version}'
+version: '${project.version}.${build.number}'
 main: nl.jamie1408g.lumina.LuminaPlugin
 api-version: '1.21'
 author: Jamie1408G
@@ -69,6 +69,7 @@ permissions:
       lumina.admin.quests: true
       lumina.admin.property: true
       lumina.admin.city: true
+      lumina.admin.update: true
       lumina.property.bypass: true
   lumina.admin.reload:
     description: Reload Lumina configs
@@ -97,8 +98,8 @@ permissions:
   lumina.admin.city:
     description: Set the city border and districts
     default: op
-  lumina.admin.city:
-    description: Set the city border and districts
+  lumina.admin.update:
+    description: Check for and download Lumina updates, and get told about them
     default: op
   lumina.property.bypass:
     description: Build in any Lumina property

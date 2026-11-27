@@ -12,7 +12,7 @@ Eén plugin voor Minecraft Lumina (Spigot/Paper/Purpur 1.21.x, getest tegen de 1
 
 ## Installeren
 
-1. Download `Lumina.jar` via **Releases → latest** in deze repo. Elke push naar `main` bouwt hem automatisch.
+1. Download `Lumina.jar` via **Releases** in deze repo (de bovenste, met het label *Latest*). Elke push naar `main` bouwt hem automatisch; daarna houdt de plugin zichzelf up-to-date (zie *Automatisch updaten*).
 2. Zet de jar in de map `plugins` van de server en herstart.
 3. In `plugins/Lumina/` staan nu `config.yml`, `network.yml` en `messages.yml`.
 
@@ -78,3 +78,11 @@ Daarna staat de jar in `target/Lumina.jar`. Je hebt Java 21 nodig.
 ## Winkel
 
 Zet in `config.yml` onder `shop:` wat de stad verkoopt (Minecraft-item-id, aantal, prijs in LumiCoins). Staf plaatst een bord met `[Shop]` op regel 1 en het item-id (bijv. `lumina-flag`) op regel 2. Spelers klikken erop om te kopen; de prijs gaat van hun portemonnee af. `/lumina shop` toont alles wat te koop is.
+
+## Automatisch updaten
+
+Elke push naar `main` maakt een genummerde release (`v1.0.0.<build>`) met `Lumina.jar` en `Lumina.jar.sha256`. De plugin kijkt elke 6 uur (en een minuut na het opstarten) of er een nieuwere release is. Zo ja, dan downloadt hij die in de update-map van de server en installeert de server hem bij de volgende herstart. Je hoeft de jar dus niet meer zelf te vervangen. De download wordt alleen bewaard als de SHA-256 klopt en het echt de Lumina-plugin is.
+
+- `/lumina update` kijkt meteen (en downloadt), `/lumina version` laat zien welke versie draait. Staf met `lumina.admin.update` krijgt bij het inloggen te horen dat er een update klaarstaat.
+- Instellingen staan in `config.yml` onder `updater:`. De repository moet **openbaar** zijn, anders kan de server de releases niet zien.
+- Let op: wie releases in deze repository kan publiceren, kan de plugin op de server updaten.

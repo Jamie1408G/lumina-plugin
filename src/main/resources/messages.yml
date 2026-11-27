@@ -86,6 +86,14 @@ city:
   district-header: "&b&lDistricts&7: {count}"
   district-entry: " &f{district} &7{area}"
 
+update:
+  not-set-up: "Updates aren't set up: put the GitHub repository in &fupdater.github&7 in config.yml."
+  busy: "Already checking..."
+  checking: "Checking GitHub for a new version..."
+  pending: "&eLumina {version} is downloaded and will be installed on the next restart."
+  available: "&eLumina {version} is available.&7 Download it with &f/lumina update"
+  version: "Lumina &f{version}&7, updates from &f{repo}&7. Last check: &f{result}"
+
 shop:
   unknown-item: "&cNo shop item called '&f{item}&c'. Write an item id on line 2: &f{items}"
   sign-created: "&aShop sign for &f{item}&a is ready. Wax it with honeycomb so it can't be edited by accident."
@@ -264,7 +272,7 @@ admin:
   overview-no-card: "&8none"
   overview-no-job: "&8none"
   player-help: "&b&lCommands\n &f/route <from> <to> &8- &7plan a journey\n &f/metro &8- &7lines and stations\n &f/lumicoins &8- &7your wallet\n &f/luminacard &8- &7your Lumina Card\n &f/luminajob &8- &7city jobs\n &f/lquests &8- &7quests\n &f/property &8- &7apartments\n &f/lulaws &8- &7Lumina's laws\n &f/lumina where &8- &7which district you're in\n &f/lumina shop &8- &7what the city sells"
-  admin-help: "&c&lAdmin\n &f/lumina reload &8| &fnetwork &8| &fsetstation <station>\n &f/lumina gate place <station> [in|out|both] &8| &fgate remove|rebuild|list\n &f/lumina pos1 &8| &fpos2 &8| &fcity set &8| &fdistrict add|remove|list <name>\n &f/lumina property create <id> <price> [district]\n &f/lumina property delete|price|evict <id>\n &f/lumina givecard <player> [value] &8| &fcard|blockcard|unblockcard <id>\n &f/lumina job <player> <job|none> &8| &fquestreset <player> [quest]\n &f/lumicoins give|take|set <player> <amount>"
+  admin-help: "&c&lAdmin\n &f/lumina reload &8| &fnetwork &8| &fsetstation <station>\n &f/lumina gate place <station> [in|out|both] &8| &fgate remove|rebuild|list\n &f/lumina pos1 &8| &fpos2 &8| &fcity set &8| &fdistrict add|remove|list <name>\n &f/lumina property create <id> <price> [district]\n &f/lumina property delete|price|evict <id>\n &f/lumina givecard <player> [value] &8| &fcard|blockcard|unblockcard <id>\n &f/lumina job <player> <job|none> &8| &fquestreset <player> [quest]\n &f/lumicoins give|take|set <player> <amount>\n &f/lumina update &8| &fversion &8- &7new versions from GitHub"
   reloaded: "&aReloaded: {lines} lines, {stations} stations, {jobs} jobs, {quests} quests."
   station-set: "&aLocation of &f{station}&a set to {x}, {y}, {z}."
   network-status: "&b&lNetwork&7: {lines} lines, {stations} stations, {missing} without location"
