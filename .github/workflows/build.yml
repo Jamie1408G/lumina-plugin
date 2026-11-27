@@ -84,7 +84,7 @@ jobs:
           for i in $(seq 1 240); do grep -q 'Done (' server.out && break; sleep 1; done
           for cmd in "lumina network" "metro lines" "metro line LML" "metro station civic skyline" \
                      "route LM1 CT3" "route tanjong gateway vivora" "route LM1" "lumicoins top" \
-                     "luminajob list" "luminajob who" "luminajob requests" "lumina gate list" "property list" "lquests" "lumina reload" "lumina help"; do
+                     "luminajob list" "luminajob who" "luminajob requests" "lumina gate list" "lulaws" "lulaws griefing" "lumina city" "lumina district list" "property list" "lquests" "lumina reload" "lumina help"; do
             echo "$cmd" >&3
             sleep 1
           done

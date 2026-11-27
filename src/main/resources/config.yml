@@ -108,6 +108,16 @@ jobs:
       # Free through the faregates while working on an accepted job request (only if it gets completed).
       free-travel: true
 
+# ---------- City ----------
+# The city border and districts are set in game: /lumina pos1, /lumina pos2, then
+# /lumina city set or /lumina district add <name>. Texts are in messages.yml (city:).
+city:
+  enabled: true
+  # "Welcome to Lumina" at most once per this many seconds per player.
+  welcome-cooldown-seconds: 60
+  # The laws hint follows the welcome title after this many ticks (20 = 1 second).
+  laws-hint-delay-ticks: 40
+
 # ---------- Quests ----------
 quests:
   # Timezone for daily/weekly resets.

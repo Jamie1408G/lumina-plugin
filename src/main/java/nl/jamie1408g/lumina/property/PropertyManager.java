@@ -171,6 +171,11 @@ public final class PropertyManager implements Listener {
                 "x", l.getBlockX(), "y", l.getBlockY(), "z", l.getBlockZ());
     }
 
+    /** The two corners set with /lumina pos1 and pos2 (either may be null), or null. */
+    public Location[] selection(Player player) {
+        return selections.get(player.getUniqueId());
+    }
+
     public Property create(Player player, String id, long price, String district) {
         Location[] selection = selections.get(player.getUniqueId());
         if (selection == null || selection[0] == null || selection[1] == null) {

@@ -3,7 +3,7 @@ version: '${project.version}'
 main: nl.jamie1408g.lumina.LuminaPlugin
 api-version: '1.21'
 author: Jamie1408G
-description: 'Minecraft Lumina: journey planner, LumiCoins, Lumina Card faregates, city jobs, quests and property.'
+description: 'Minecraft Lumina: journey planner, LumiCoins, Lumina Card faregates, city jobs, quests, property, laws and districts.'
 
 commands:
   lumina:
@@ -32,13 +32,18 @@ commands:
     permission: lumina.use
   luminajob:
     description: City jobs in Lumina
-    usage: /luminajob <list|join|leave|duty|who|call|info>
+    usage: /luminajob <list|join|leave|duty|who|info|request|requests|accept|done|drop|cancel>
     aliases: [ljob, job]
     permission: lumina.use
   lquests:
     description: Lumina quests
     usage: /lquests
     aliases: [luminaquests, lquest, quests]
+    permission: lumina.use
+  lulaws:
+    description: Read Lumina's laws, or look up one offence
+    usage: /lulaws [offence]
+    aliases: [luminalaws, laws]
     permission: lumina.use
   property:
     description: Apartments and property in Lumina
@@ -63,7 +68,11 @@ permissions:
       lumina.admin.jobs: true
       lumina.admin.quests: true
       lumina.admin.property: true
-      lumina.property.bypass: true
+      lumina.admin.city: true
+      lumina.admin.city:
+    description: Set the city border and districts
+    default: op
+  lumina.property.bypass: true
   lumina.admin.reload:
     description: Reload Lumina configs
     default: op
@@ -87,6 +96,9 @@ permissions:
     default: op
   lumina.admin.property:
     description: Create and manage properties
+    default: op
+  lumina.admin.city:
+    description: Set the city border and districts
     default: op
   lumina.property.bypass:
     description: Build in any Lumina property

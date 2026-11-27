@@ -2,6 +2,7 @@ package nl.jamie1408g.lumina.command;
 
 import nl.jamie1408g.lumina.LuminaPlugin;
 import nl.jamie1408g.lumina.card.FaregateListener;
+import nl.jamie1408g.lumina.city.CityManager;
 import nl.jamie1408g.lumina.card.ModelGateManager;
 import nl.jamie1408g.lumina.jobs.JobManager;
 import nl.jamie1408g.lumina.network.Station;
@@ -10,6 +11,7 @@ import nl.jamie1408g.lumina.storage.CardRecord;
 import nl.jamie1408g.lumina.storage.PlayerData;
 import nl.jamie1408g.lumina.util.Money;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
@@ -90,6 +92,15 @@ public final class LuminaCommand implements TabExecutor {
             }
             case "property" -> property(sender, args);
             case "gate", "gates" -> gate(sender, args);
+            case "where" -> {
+                if (!(sender instanceof Player player)) {
+                    playersOnly(sender);
+                    return true;
+                }
+                plugin.msg().send(sender, "city.where", "place", plugin.city().describe(player.getLocation()));
+            }
+            case "city" -> city(sender, args);
+            case "district", "districts" -> district(sender, args);
             case "givecard" -> {
                 if (!check(sender, "lumina.admin.card")) {
                     return true;
@@ -237,6 +248,81 @@ public final class LuminaCommand implements TabExecutor {
         }
     }
 
+    /** The pos1/pos2 corners as a box on the map, or null (with a message). */
+    private CityManager.Box selectionBox(Player player) {
+        Location[] sel = plugin.properties().selection(player);
+        if (sel == null || sel[0] == null || sel[1] == null || sel[0].getWorld() == null
+                || !sel[0].getWorld().equals(sel[1].getWorld())) {
+            plugin.msg().send(player, "city.need-selection");
+            return null;
+        }
+        return CityManager.Box.of(sel[0].getWorld().getName(), sel[0].getBlockX(), sel[0].getBlockZ(),
+                sel[1].getBlockX(), sel[1].getBlockZ());
+    }
+
+    private static String describe(CityManager.Box b) {
+        return "x " + b.minX() + " to " + b.maxX() + ", z " + b.minZ() + " to " + b.maxZ() + " (" + b.world() + ")";
+    }
+
+    /** /lumina city set | info */
+    private void city(CommandSender sender, String[] args) {
+        if (!check(sender, "lumina.admin.city")) {
+            return;
+        }
+        String action = args.length < 2 ? "info" : args[1].toLowerCase(Locale.ROOT);
+        if (action.equals("set")) {
+            if (!(sender instanceof Player player)) {
+                playersOnly(sender);
+                return;
+            }
+            CityManager.Box box = selectionBox(player);
+            if (box != null) {
+                plugin.city().setCity(box);
+                plugin.msg().send(sender, "city.set", "area", describe(box));
+            }
+            return;
+        }
+        CityManager.Box c = plugin.city().city();
+        plugin.msg().send(sender, c == null ? "city.info-none" : "city.info", "area", c == null ? "" : describe(c),
+                "districts", plugin.city().districts().size());
+    }
+
+    /** /lumina district add <name> | remove <name> | list */
+    private void district(CommandSender sender, String[] args) {
+        if (!check(sender, "lumina.admin.city")) {
+            return;
+        }
+        String action = args.length < 2 ? "list" : args[1].toLowerCase(Locale.ROOT);
+        String name = args.length < 3 ? "" : Cmd.join(args, 2);
+        switch (action) {
+            case "add" -> {
+                if (!(sender instanceof Player player)) {
+                    playersOnly(sender);
+                    return;
+                }
+                if (name.isBlank()) {
+                    plugin.msg().send(sender, "city.district-usage");
+                    return;
+                }
+                CityManager.Box box = selectionBox(player);
+                if (box != null) {
+                    plugin.city().addDistrict(name, box);
+                    plugin.msg().send(sender, "city.district-added", "district", name.trim(), "area", describe(box));
+                }
+            }
+            case "remove", "delete" -> plugin.msg().send(sender,
+                    !name.isBlank() && plugin.city().removeDistrict(name) ? "city.district-removed" : "city.district-unknown",
+                    "district", name);
+            case "list" -> {
+                plugin.msg().line(sender, "city.district-header", "count", plugin.city().districts().size());
+                for (CityManager.District d : plugin.city().districts()) {
+                    plugin.msg().line(sender, "city.district-entry", "district", d.name(), "area", describe(d.box()));
+                }
+            }
+            default -> plugin.msg().send(sender, "city.district-usage");
+        }
+    }
+
     /** /lumina gate place <station> [in|out|both] | remove | rebuild | list */
     private void gate(CommandSender sender, String[] args) {
         if (!check(sender, "lumina.admin.signs")) {
@@ -319,9 +405,9 @@ public final class LuminaCommand implements TabExecutor {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            List<String> subs = new ArrayList<>(List.of("help"));
+            List<String> subs = new ArrayList<>(List.of("help", "where"));
             if (sender.hasPermission("lumina.admin")) {
-                subs.addAll(List.of("reload", "setstation", "network", "pos1", "pos2", "property", "gate", "givecard",
+                subs.addAll(List.of("reload", "setstation", "network", "pos1", "pos2", "city", "district", "property", "gate", "givecard",
                         "card", "blockcard", "unblockcard", "job", "questreset"));
             }
             return Cmd.filter(subs, args[0]);
@@ -335,6 +421,8 @@ public final class LuminaCommand implements TabExecutor {
                 case "setstation" -> plugin.network().network().completions(args[1]);
                 case "property" -> Cmd.filter(args[1], "create", "delete", "price", "evict");
                 case "gate", "gates" -> Cmd.filter(args[1], "place", "remove", "rebuild", "list");
+                case "city" -> Cmd.filter(args[1], "set", "info");
+                case "district", "districts" -> Cmd.filter(args[1], "add", "remove", "list");
                 case "givecard", "job", "questreset" -> Cmd.filter(plugin.storage().knownNames(), args[1]);
                 default -> List.of();
             };
@@ -352,6 +440,13 @@ public final class LuminaCommand implements TabExecutor {
                 options.addAll(Cmd.filter(args[args.length - 1], "in", "out", "both"));
             }
             return options;
+        }
+        if (args.length == 3 && (sub.equals("district") || sub.equals("districts")) && args[1].equalsIgnoreCase("remove")) {
+            List<String> names = new ArrayList<>();
+            for (CityManager.District d : plugin.city().districts()) {
+                names.add(d.name());
+            }
+            return Cmd.filter(names, args[2]);
         }
         if (args.length == 3 && sub.equals("questreset")) {
             List<String> ids = new ArrayList<>();

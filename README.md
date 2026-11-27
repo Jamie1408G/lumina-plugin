@@ -67,3 +67,10 @@ Admin: `/lumina reload | network | setstation | pos1 | pos2 | property … | giv
 mvn package
 ```
 Daarna staat de jar in `target/Lumina.jar`. Je hebt Java 21 nodig.
+
+## Wetten, stadsgrens en wijken
+
+- **Wetten:** `/lulaws` opent het wetboek van Lumina als boek op je scherm (er komt niets in je inventaris). `/lulaws griefing` zoekt één overtreding op in de chat. De tekst staat in `laws.yml`; pas die aan en doe `/lumina reload`.
+- **Stadsgrens:** ga op twee tegenover elkaar liggende hoeken staan met `/lumina pos1` en `/lumina pos2` (hoogte maakt niet uit) en doe `/lumina city set`. Wie Lumina binnenloopt, ziet "Welcome to Lumina" en daarna elke keer een korte regel dat `/lulaws` de wetten opent. Bij vertrek staat "Leaving Lumina" in de actiebalk.
+- **Wijken:** zelfde hoeken, dan `/lumina district add Civic Skyline`. De naam verschijnt in de actiebalk zodra je de wijk inloopt; een kleine wijk binnen een grotere wint. `/lumina district list` en `/lumina district remove <naam>` voor beheer. Spelers zien met `/lumina where` waar ze zijn.
+- Teksten staan in `messages.yml` onder `city:`, instellingen in `config.yml` onder `city:`.
