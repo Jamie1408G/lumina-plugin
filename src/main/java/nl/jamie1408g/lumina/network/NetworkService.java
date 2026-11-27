@@ -74,6 +74,16 @@ public final class NetworkService {
                 fresh.addPlace(name, stations);
             }
         }
+        ConfigurationSection placeLocations = yaml.getConfigurationSection("place-locations");
+        if (placeLocations != null) {
+            for (String name : placeLocations.getKeys(false)) {
+                ConfigurationSection loc = placeLocations.getConfigurationSection(name);
+                if (loc != null) {
+                    fresh.setPlaceLocation(name, new StationLocation(loc.getString("world", "world"),
+                            loc.getDouble("x"), loc.getDouble("y"), loc.getDouble("z")));
+                }
+            }
+        }
 
         ConfigurationSection locations = yaml.getConfigurationSection("locations");
         if (locations != null) {
@@ -156,14 +166,40 @@ public final class NetworkService {
             return false;
         }
         yaml.set("places." + key, null);
+        String locationKey = yamlKey("place-locations", name);
+        if (locationKey != null) {
+            yaml.set("place-locations." + locationKey, null);
+        }
         save();
         load();
         return true;
     }
 
+    /** Saves where a place is (players are guided there after alighting) and reloads the network. */
+    public void setPlaceLocation(Place place, Location location) {
+        if (location.getWorld() == null) {
+            return;
+        }
+        String old = yamlKey("place-locations", place.name());
+        if (old != null) {
+            yaml.set("place-locations." + old, null);
+        }
+        String base = "place-locations." + place.name() + ".";
+        yaml.set(base + "world", location.getWorld().getName());
+        yaml.set(base + "x", Math.round(location.getX() * 10) / 10.0);
+        yaml.set(base + "y", Math.round(location.getY() * 10) / 10.0);
+        yaml.set(base + "z", Math.round(location.getZ() * 10) / 10.0);
+        save();
+        load();
+    }
+
     /** The key under places: in network.yml that is this place name (any spelling), or null. */
     private String yamlKey(String name) {
-        ConfigurationSection places = yaml.getConfigurationSection("places");
+        return yamlKey("places", name);
+    }
+
+    private String yamlKey(String section, String name) {
+        ConfigurationSection places = yaml.getConfigurationSection(section);
         if (places == null) {
             return null;
         }

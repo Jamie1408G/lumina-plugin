@@ -28,6 +28,25 @@ planner:
   dwell-seconds: 15
   transfer-seconds: 60
 
+# ---------- Guiding to places ----------
+# After /route to a place, a bar shows where to get off. Getting off the train near that station
+# (or tapping out there) highlights the place: distance and an arrow in the bar, a green trail on the
+# ground and a light column on the spot. Places get their spot with /lumina place here <place>.
+guide:
+  enabled: true
+  bossbar: true
+  trail: true
+  # Getting out of a train within this many blocks of the station's /lumina setstation point counts
+  # as getting off there. Keep it at least half your platform length (80-block platforms: 48).
+  station-radius: 48
+  # This close to the place counts as arrived.
+  arrive-radius: 8
+  # Guiding stops by itself after this long: waiting to get off, and walking to the place.
+  waiting-minutes: 45
+  guiding-minutes: 10
+  # Colour of Xaero's Minimap waypoints (/route xaero): 0-15 like Minecraft colours, 11 = aqua.
+  xaero-color: 11
+
 # ---------- Lumina Card & faregates ----------
 card:
   # Item used for the card. Any Minecraft item name.

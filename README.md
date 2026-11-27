@@ -66,6 +66,7 @@ Admin: `/lumina reload | network | setstation | pos1 … pos6 | pos [clear] | ci
 Naast stations kun je ook naar een **plaats** reizen: een bestemming die zelf geen station is, zoals Awards Center of Skyline Plaza. Elke plaats hoort bij het station waar je ervoor uitstapt.
 
 - **Toevoegen (in-game):** `/lumina place add LM3 Awards Center` (station, dan de naam van de plaats). Ligt een plaats bij meer stations, voer het dan nog een keer uit met het andere station; de planner kiest dan de beste reis.
+- **Locatie (voor de begeleiding):** ga op de plek zelf staan en doe `/lumina place here Awards Center`. `/lumina place list` laat zien welke plaatsen nog geen locatie hebben.
 - **Beheren:** `/lumina place list` en `/lumina place remove Awards Center`. Een plaats mag niet dezelfde naam hebben als een station en geen punt (`.`) bevatten.
 - **Spelers:** `/route Awards Center` (vanaf het dichtstbijzijnde station) of `/route Tanjong Gateway Awards Center`. Onderaan de reis staat dan *Alight at Bukit Simei for Awards Center*. Begin je bij een plaats, dan staat er bij welk station je instapt. `/metro places` toont alle plaatsen, `/metro station Bukit Simei` laat zien voor welke plaatsen je daar uitstapt.
 - **In het bestand:** de plaatsen staan in `network.yml` onder `places:`:
@@ -75,6 +76,19 @@ Naast stations kun je ook naar een **plaats** reizen: een bestemming die zelf ge
     "Expo Hall": ["Expo Town", "Vivora"]
   ```
   Na het aanpassen met de hand: `/lumina reload`. Met `/lumina place` hoeft dat niet.
+
+### Begeleiding naar de plaats
+
+Plant een speler een reis naar een plaats met een locatie, dan staat bovenin een balk: *Alight at Bukit Simei for Awards Center*. Stapt hij op dat station uit de trein (binnen `guide.station-radius` blokken van het `setstation`-punt) of checkt hij daar uit bij de poortjes, dan wordt de bestemming uitgelicht:
+
+- de balk wordt groen en toont de afstand en een pijl (↑ ↗ → …) die meedraait met waar je kijkt;
+- een groen spoor van deeltjes op de grond wijst de weg;
+- op de plek zelf staat een lichtzuil (zichtbaar vanaf ongeveer 30 blokken);
+- bij aankomst (binnen `guide.arrive-radius`) verschijnt de naam van de plaats in beeld met *You've arrived*.
+
+Sta je al op het goede station, dan begint het meteen. `/route stop` stopt de begeleiding; na 45 minuten wachten of 10 minuten lopen stopt hij vanzelf. Instellingen staan in `config.yml` onder `guide:`.
+
+**Xaero's Minimap:** spelers met Xaero's Minimap/World Map doen één keer `/route xaero`. Bij het uitstappen krijgen ze dan ook een waypoint in de chat in het deelformaat van Xaero (`xaero-waypoint:…`), waar ze op *[Add]* klikken; dan staat de bestemming op de minimap, de wereldkaart en als baken in de wereld. Het staat standaard uit, omdat spelers zonder de mod alleen een onleesbare regel zouden zien. Uitzetten: `/route xaero off`.
 
 ## Zelf bouwen
 

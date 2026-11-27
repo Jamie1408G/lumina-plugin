@@ -32,6 +32,7 @@ public final class PlayerData {
     private int trips;
     private long distance;
     private boolean walkthroughSeen;
+    private boolean xaeroWaypoints;
     private final Set<String> visitedStations = new LinkedHashSet<>();
     private final Map<String, QuestProgress> quests = new HashMap<>();
 
@@ -123,6 +124,15 @@ public final class PlayerData {
 
     public void setWalkthroughSeen(boolean walkthroughSeen) {
         this.walkthroughSeen = walkthroughSeen;
+    }
+
+    /** Wants journey destinations as Xaero's Minimap waypoints in chat (/route xaero). */
+    public boolean xaeroWaypoints() {
+        return xaeroWaypoints;
+    }
+
+    public void setXaeroWaypoints(boolean xaeroWaypoints) {
+        this.xaeroWaypoints = xaeroWaypoints;
     }
 
     public Set<String> visitedStations() {

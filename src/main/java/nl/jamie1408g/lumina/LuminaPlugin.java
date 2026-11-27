@@ -17,6 +17,7 @@ import nl.jamie1408g.lumina.command.PropertyCommand;
 import nl.jamie1408g.lumina.command.QuestCommand;
 import nl.jamie1408g.lumina.command.RouteCommand;
 import nl.jamie1408g.lumina.economy.Economy;
+import nl.jamie1408g.lumina.guide.JourneyGuide;
 import nl.jamie1408g.lumina.jobs.JobManager;
 import nl.jamie1408g.lumina.network.NetworkService;
 import nl.jamie1408g.lumina.property.PropertyManager;
@@ -56,6 +57,7 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
     private CityManager city;
     private ShopManager shop;
     private Updater updater;
+    private JourneyGuide guide;
     private BukkitTask autosave;
 
     @Override
@@ -93,6 +95,8 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
         shop.load();
         updater = new Updater(this);
         updater.load();
+        guide = new JourneyGuide(this);
+        guide.load();
 
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getPluginManager().registerEvents(gates, this);
@@ -103,6 +107,7 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(city, this);
         Bukkit.getPluginManager().registerEvents(shop, this);
         Bukkit.getPluginManager().registerEvents(updater, this);
+        Bukkit.getPluginManager().registerEvents(guide, this);
 
         register("lumina", new LuminaCommand(this));
         register("route", new RouteCommand(this));
@@ -125,6 +130,9 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
     public void onDisable() {
         if (autosave != null) {
             autosave.cancel();
+        }
+        if (guide != null) {
+            guide.stopAll();
         }
         if (gates != null) {
             gates.closeAll();
@@ -155,6 +163,7 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
         shop.load();
         updater.load();
         lrt.load();
+        guide.load();
         startAutosave();
     }
 
@@ -225,6 +234,10 @@ public final class LuminaPlugin extends JavaPlugin implements Listener {
 
     public CityManager city() {
         return city;
+    }
+
+    public JourneyGuide guide() {
+        return guide;
     }
 
     public JobManager jobs() {

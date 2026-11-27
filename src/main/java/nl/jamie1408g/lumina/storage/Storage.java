@@ -157,6 +157,7 @@ public final class Storage {
                 data.setTrips(s.getInt("trips"));
                 data.setDistance(s.getLong("distance"));
                 data.setWalkthroughSeen(s.getBoolean("walkthrough-seen"));
+                data.setXaeroWaypoints(s.getBoolean("xaero-waypoints"));
                 data.visitedStations().addAll(s.getStringList("visited"));
                 ConfigurationSection quests = s.getConfigurationSection("quests");
                 if (quests != null) {
@@ -243,6 +244,7 @@ public final class Storage {
             playerYaml.set(base + "trips", data.trips());
             playerYaml.set(base + "distance", data.distance());
             playerYaml.set(base + "walkthrough-seen", data.walkthroughSeen() ? true : null);
+            playerYaml.set(base + "xaero-waypoints", data.xaeroWaypoints() ? true : null);
             playerYaml.set(base + "visited", new ArrayList<>(data.visitedStations()));
             for (Map.Entry<String, PlayerData.QuestProgress> entry : data.quests().entrySet()) {
                 String q = base + "quests." + entry.getKey() + ".";

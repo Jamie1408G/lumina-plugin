@@ -28,6 +28,25 @@ public final class RouteCommand implements TabExecutor {
             plugin.msg().send(sender, "route.usage", "label", label);
             return true;
         }
+        // /route stop and /route xaero [on|off], unless a station or place is called that.
+        String first = args[0].toLowerCase(java.util.Locale.ROOT);
+        if (args.length <= 2 && (first.equals("stop") || first.equals("xaero"))
+                && network.byKey(first) == null && network.findPlace(first) == null) {
+            if (!(sender instanceof Player player)) {
+                plugin.msg().send(sender, "general.players-only");
+                return true;
+            }
+            if (first.equals("stop")) {
+                plugin.msg().send(sender, plugin.guide().stop(player.getUniqueId()) ? "guide.stopped" : "guide.none");
+            } else {
+                var data = plugin.data(player);
+                boolean on = args.length < 2 ? !data.xaeroWaypoints() : !args[1].equalsIgnoreCase("off");
+                data.setXaeroWaypoints(on);
+                plugin.storage().markDirty();
+                plugin.msg().send(sender, on ? "guide.xaero-on" : "guide.xaero-off");
+            }
+            return true;
+        }
 
         // Stations and places (like "Awards Center") both work, at either end.
         Network.Destination from = null;
@@ -72,12 +91,19 @@ public final class RouteCommand implements TabExecutor {
         if (route.legs().isEmpty()) {
             if (to.place() != null) {
                 plugin.msg().send(sender, "route.already-there", "place", to.place().name(), "station", route.to().name());
+                if (sender instanceof Player player) {
+                    plugin.guide().plan(player, to.place(), route.to(), true);
+                }
             } else {
                 plugin.msg().send(sender, "route.same-station", "station", route.to().name());
             }
             return true;
         }
         show(sender, route, from, to);
+        if (to.place() != null && sender instanceof Player player
+                && plugin.guide().plan(player, to.place(), route.to(), false)) {
+            plugin.msg().line(sender, "guide.hint", "place", to.place().name(), "station", route.to().name());
+        }
         return true;
     }
 
@@ -120,6 +146,14 @@ public final class RouteCommand implements TabExecutor {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (args.length == 1) {
+            List<String> options = new java.util.ArrayList<>(plugin.network().network().destinationCompletions(args[0]));
+            options.addAll(Cmd.filter(args[0], "stop", "xaero"));
+            return options;
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("xaero")) {
+            return Cmd.filter(args[1], "on", "off");
+        }
         if (args.length <= 2) {
             return plugin.network().network().destinationCompletions(args[args.length - 1]);
         }

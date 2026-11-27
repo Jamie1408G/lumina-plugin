@@ -461,6 +461,22 @@ public final class LuminaCommand implements TabExecutor {
                 plugin.msg().send(sender, "admin.place-added", "place", place == null ? name : place.name(),
                         "stations", place == null ? station.name() : place.stationNames());
             }
+            case "here", "setlocation" -> {
+                if (!(sender instanceof Player player)) {
+                    playersOnly(sender);
+                    return;
+                }
+                String name = args.length < 3 ? "" : Cmd.join(args, 2).trim();
+                Place place = plugin.network().network().findPlace(name);
+                if (place == null) {
+                    plugin.msg().send(sender, "admin.place-unknown", "place", name);
+                    return;
+                }
+                plugin.network().setPlaceLocation(place, player.getLocation());
+                plugin.msg().send(sender, "admin.place-here", "place", place.name(),
+                        "x", player.getLocation().getBlockX(), "y", player.getLocation().getBlockY(),
+                        "z", player.getLocation().getBlockZ());
+            }
             case "remove", "delete" -> {
                 String name = args.length < 3 ? "" : Cmd.join(args, 2).trim();
                 Place place = plugin.network().network().findPlace(name);
@@ -474,7 +490,10 @@ public final class LuminaCommand implements TabExecutor {
                 var places = plugin.network().network().places();
                 plugin.msg().line(sender, "metro.places-header", "count", places.size());
                 for (Place place : places) {
-                    plugin.msg().line(sender, "metro.places-entry", "place", place.name(), "stations", place.stationNames());
+                    var loc = place.location();
+                    plugin.msg().line(sender, "admin.place-entry", "place", place.name(), "stations", place.stationNames(),
+                            "where", loc == null ? plugin.msg().get("admin.place-no-location", "place", place.name())
+                                    : plugin.msg().get("admin.place-location", "x", Math.round(loc.x()), "z", Math.round(loc.z())));
                 }
                 if (places.isEmpty()) {
                     plugin.msg().line(sender, "admin.place-usage");
@@ -687,7 +706,7 @@ public final class LuminaCommand implements TabExecutor {
                 case "gate", "gates" -> Cmd.filter(args[1], "place", "remove", "rebuild", "list");
                 case "city" -> Cmd.filter(args[1], "set", "show", "info");
                 case "pos", "positions" -> Cmd.filter(args[1], "clear");
-                case "place", "places" -> Cmd.filter(args[1], "add", "remove", "list");
+                case "place", "places" -> Cmd.filter(args[1], "add", "here", "remove", "list");
                 case "fares", "fare" -> Cmd.filter(args[1], "set");
                 case "walkthrough", "tour", "tutorial" -> Cmd.filter(args[1], "skip");
                 case "district", "districts" -> Cmd.filter(args[1], "add", "remove", "list");
@@ -699,7 +718,8 @@ public final class LuminaCommand implements TabExecutor {
             if (args[1].equalsIgnoreCase("add")) {
                 return plugin.network().network().completions(args[2]);
             }
-            if (args[1].equalsIgnoreCase("remove") || args[1].equalsIgnoreCase("delete")) {
+            if (args[1].equalsIgnoreCase("remove") || args[1].equalsIgnoreCase("delete")
+                    || args[1].equalsIgnoreCase("here")) {
                 List<String> names = new ArrayList<>();
                 for (Place place : plugin.network().network().places()) {
                     names.add(place.name().replace(' ', '-'));

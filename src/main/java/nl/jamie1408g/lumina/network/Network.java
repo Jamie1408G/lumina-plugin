@@ -152,7 +152,19 @@ public final class Network {
             warnings.add("Place '" + clean + "' has no known station, so it's ignored.");
             return;
         }
-        placesByKey.put(Station.keyOf(clean), new Place(existing == null ? clean : existing.name(), found));
+        placesByKey.put(Station.keyOf(clean), new Place(existing == null ? clean : existing.name(), found,
+                existing == null ? null : existing.location()));
+    }
+
+    /** Where a place is, so players can be guided there from the station. False if there's no such place. */
+    public boolean setPlaceLocation(String name, StationLocation location) {
+        Place place = placesByKey.get(Station.keyOf(name));
+        if (place == null) {
+            warnings.add("place-locations: unknown place '" + name + "'.");
+            return false;
+        }
+        placesByKey.put(place.key(), place.withLocation(location));
+        return true;
     }
 
     public Collection<Place> places() {

@@ -200,7 +200,7 @@ gate:
   tap-out-bar: "&aFare deducted &f{fare} &8| &7Card value &f{value}"
 
 route:
-  usage: "Use &f/{label} <from> <to>&7, or &f/{label} <to>&7 to start at the nearest station. Stations and places (see &f/metro places&7) both work."
+  usage: "Use &f/{label} <from> <to>&7, or &f/{label} <to>&7 to start at the nearest station. Stations and places (see &f/metro places&7) both work. &f/{label} stop&7 stops guiding, &f/{label} xaero&7 turns Xaero's Minimap waypoints on or off."
   unknown-station: "&cUnknown station: &f{station}"
   unknown-destination: "&cUnknown station or place: &f{station}&c. See &f/metro places"
   no-nearest: "&cNo station nearby has a location yet. Use &f/{label} <from> <to>&c."
@@ -217,6 +217,23 @@ route:
   start-at: "&7Board at &f{station}&7 for {place}."
   alight-for: "&a➜ Alight at &f{station}&a for &f{place}"
   destination-info: "&7ℹ {info}"
+
+# Guiding players from the station to a place (/route <place>).
+guide:
+  hint: "&7Get off at &f{station}&7 and you'll be guided to {place}. &8(/route stop to stop)"
+  # Boss bar during the trip, and while walking to the place. {arrow} points where to go.
+  bar-waiting: "&bAlight at &f{station}&b for &f{place}"
+  bar: "&a➜ {place} &f{distance} m &a{arrow}"
+  bar-other-world: "&7{place} is in another world"
+  start: "&a➜ {place}&7 is &f{distance} m&7 to the {direction}. Follow the green trail and the bar at the top."
+  arrived-title: "&a{place}"
+  arrived-subtitle: "&7You've arrived"
+  timeout: "&7Stopped guiding you to {place}."
+  stopped: "&7Stopped guiding you."
+  none: "&7You're not being guided anywhere. Plan a trip to a place with &f/route <place>"
+  xaero-on: "&aDestinations will also be sent as Xaero's Minimap waypoints.&7 Click &f[Add]&7 in chat when it appears. Turn it off with &f/route xaero off"
+  xaero-off: "&7Xaero's Minimap waypoints turned off."
+  xaero-intro: "&7Waypoint for Xaero's Minimap:"
 
 metro:
   usage: "&f/{label} &7lines | line <code> | station <name> | places | nearest"
@@ -345,11 +362,15 @@ admin:
   overview-no-card: "&8none"
   overview-no-job: "&8none"
   player-help: "&b&lCommands\n &f/route <from> <to> &8- &7plan a journey (stations or places)\n &f/metro &8- &7lines, stations and places\n &f/lumicoins &8- &7your wallet\n &f/luminacard &8- &7your Lumina Card\n &f/luminajob &8- &7city jobs\n &f/lquests &8- &7quests\n &f/property &8- &7apartments\n &f/lulaws &8- &7Lumina's laws\n &f/lumina where &8- &7which district you're in\n &f/lumina shop &8- &7what the city sells\n &f/lumina walkthrough &8- &7a tour of how Lumina works"
-  admin-help: "&c&lAdmin\n &f/lumina reload &8| &fnetwork &8| &fsetstation <station>\n &f/lumina place add <station> <place> &8| &fplace remove <place> &8| &fplace list\n &f/lumina gate place <station> [in|out|both] &8| &fgate remove|rebuild|list\n &f/lumina fares &8| &ffares set <name> <amount>\n &f/lumina pos1 &8... &fpos6 &8| &fpos [clear] &8| &fcity set|show &8| &fdistrict add|remove|list <name>\n &f/lumina property create <id> <price> [district]\n &f/lumina property delete|price|evict <id>\n &f/lumina givecard <player> [value] &8| &fcard|blockcard|unblockcard <id>\n &f/lumina job <player> <job|none> &8| &fquestreset <player> [quest]\n &f/lumicoins give|take|set <player> <amount>\n &f/lumina update &8| &fversion &8- &7new versions from GitHub"
+  admin-help: "&c&lAdmin\n &f/lumina reload &8| &fnetwork &8| &fsetstation <station>\n &f/lumina place add <station> <place> &8| &fplace here <place> &8| &fplace remove <place> &8| &fplace list\n &f/lumina gate place <station> [in|out|both] &8| &fgate remove|rebuild|list\n &f/lumina fares &8| &ffares set <name> <amount>\n &f/lumina pos1 &8... &fpos6 &8| &fpos [clear] &8| &fcity set|show &8| &fdistrict add|remove|list <name>\n &f/lumina property create <id> <price> [district]\n &f/lumina property delete|price|evict <id>\n &f/lumina givecard <player> [value] &8| &fcard|blockcard|unblockcard <id>\n &f/lumina job <player> <job|none> &8| &fquestreset <player> [quest]\n &f/lumicoins give|take|set <player> <amount>\n &f/lumina update &8| &fversion &8- &7new versions from GitHub"
   reloaded: "&aReloaded: {lines} lines, {stations} stations, {jobs} jobs, {quests} quests."
   station-set: "&aLocation of &f{station}&a set to {x}, {y}, {z}."
-  place-usage: "Use &f/lumina place add <station> <place>&7 (like &f/lumina place add LM3 Awards Center&7), &f/lumina place remove <place>&7 or &f/lumina place list"
-  place-added: "&aPlace &f{place}&a: alight at &f{stations}&a. Try &f/route {place}"
+  place-usage: "Use &f/lumina place add <station> <place>&7 (like &f/lumina place add LM3 Awards Center&7), then stand at the place and &f/lumina place here <place>&7. Also &f/lumina place remove <place>&7 and &f/lumina place list"
+  place-added: "&aPlace &f{place}&a: alight at &f{stations}&a. Now stand at the place itself and use &f/lumina place here {place}&a so players are guided there."
+  place-here: "&a{place} is at &f{x}, {y}, {z}&a. Players who get off at its station are guided here."
+  place-entry: " &f{place} &7→ alight at &f{stations}&7, {where}"
+  place-location: "&7guided to &f{x}, {z}"
+  place-no-location: "&eno location yet &8(/lumina place here {place})"
   place-removed: "&aPlace &f{place}&a removed."
   place-unknown: "&cNo place called &f{place}&c. See &f/lumina place list"
   place-is-station: "&c{place} is already the name of a station."
