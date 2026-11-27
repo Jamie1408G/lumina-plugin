@@ -38,7 +38,8 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Faregate, top-up and card-machine signs.
+ * Faregate, top-up and card-machine signs, and the tap-in/tap-out rules every faregate uses
+ * (sign gates here, modern 3D gates in {@link ModelGateManager}).
  *
  * Admins write on a sign:
  *   [Faregate]      / station code or name / in, out or both (empty = both)
@@ -49,7 +50,16 @@ public final class FaregateListener implements Listener {
 
     private enum SignType { GATE, TOP_UP, MACHINE }
 
-    private enum Mode { IN, OUT, BOTH }
+    /** Which way a gate lets people through. */
+    public enum Mode { IN, OUT, BOTH }
+
+    /** What a gate does when a tap is accepted or refused. */
+    public interface GateHandle {
+        void open();
+
+        default void refuse() {
+        }
+    }
 
     private static final DateTimeFormatter HISTORY_TIME = DateTimeFormatter.ofPattern("dd-MM HH:mm");
 
@@ -201,7 +211,7 @@ public final class FaregateListener implements Listener {
         event.setCancelled(true);
         Player player = event.getPlayer();
         switch (type) {
-            case GATE -> useGate(player, block, lines);
+            case GATE -> useSignGate(player, block, lines);
             case TOP_UP -> {
                 long amount = Money.parse(Msg.strip(lines[1]).replace(Money.symbol(), "").trim());
                 if (amount > 0) {
@@ -212,35 +222,48 @@ public final class FaregateListener implements Listener {
         }
     }
 
-    private void useGate(Player player, Block signBlock, String[] lines) {
+    private void useSignGate(Player player, Block signBlock, String[] lines) {
         Station station = parseStation(lines[1]);
         if (station == null) {
             plugin.msg().send(player, "gate.out-of-service");
             playDeny(player);
             return;
         }
+        useGate(player, station, parseModeSign(lines[3]), () -> openGate(signBlock));
+    }
+
+    /** A player taps their card at a gate of this station. The gate opens or refuses through the handle. */
+    public void useGate(Player player, Station station, Mode mode, GateHandle gate) {
         CardRecord card = plugin.cards().cardInHand(player);
         if (card == null) {
             plugin.msg().actionBar(player, "gate.hold-card-bar");
             plugin.msg().send(player, "card.hold-card");
-            playDeny(player);
+            deny(player, gate);
             return;
         }
         if (card.blocked()) {
             plugin.msg().send(player, "card.blocked");
-            playDeny(player);
+            deny(player, gate);
             return;
         }
-        Mode mode = parseModeSign(lines[3]);
         boolean inside = card.tappedIn() != null;
         if (mode == Mode.IN || (mode == Mode.BOTH && !inside)) {
-            tapIn(player, card, station, signBlock);
+            tapIn(player, card, station, gate);
         } else {
-            tapOut(player, card, station, signBlock);
+            tapOut(player, card, station, gate);
         }
     }
 
-    private void tapIn(Player player, CardRecord card, Station station, Block signBlock) {
+    private void deny(Player player, GateHandle gate) {
+        playDeny(player);
+        gate.refuse();
+    }
+
+    public int openTicks() {
+        return openTicks;
+    }
+
+    private void tapIn(Player player, CardRecord card, Station station, GateHandle gate) {
         boolean free = plugin.jobs().freeTravel(player);
         long now = System.currentTimeMillis();
         if (card.tappedIn() != null) {
@@ -250,7 +273,7 @@ public final class FaregateListener implements Listener {
                 if (card.value() < penalty) {
                     plugin.msg().send(player, "gate.penalty-topup", "fare", Money.format(penalty),
                             "value", Money.format(card.value()));
-                    playDeny(player);
+                    deny(player, gate);
                     return;
                 }
                 card.setValue(card.value() - penalty);
@@ -262,22 +285,22 @@ public final class FaregateListener implements Listener {
             plugin.msg().send(player, "gate.insufficient-enter", "min", Money.format(minToEnter),
                     "value", Money.format(card.value()));
             plugin.msg().actionBar(player, "gate.insufficient-bar", "value", Money.format(card.value()));
-            playDeny(player);
+            deny(player, gate);
             return;
         }
         card.setTappedIn(station.key(), now);
         plugin.storage().markDirty();
-        openGate(signBlock);
+        gate.open();
         plugin.msg().actionBar(player, free ? "gate.tap-in-free-bar" : "gate.tap-in-bar",
                 "station", station.name(), "value", Money.format(card.value()));
         playSuccess(player);
         visit(player, station);
     }
 
-    private void tapOut(Player player, CardRecord card, Station station, Block signBlock) {
+    private void tapOut(Player player, CardRecord card, Station station, GateHandle gate) {
         if (card.tappedIn() == null) {
             plugin.msg().send(player, "gate.not-tapped-in");
-            playDeny(player);
+            deny(player, gate);
             return;
         }
         boolean free = plugin.jobs().freeTravel(player);
@@ -301,7 +324,7 @@ public final class FaregateListener implements Listener {
             plugin.msg().send(player, "gate.insufficient-exit", "fare", Money.format(fare),
                     "value", Money.format(card.value()));
             plugin.msg().actionBar(player, "gate.insufficient-bar", "value", Money.format(card.value()));
-            playDeny(player);
+            deny(player, gate);
             return;
         }
         card.setValue(card.value() - fare);
@@ -309,7 +332,7 @@ public final class FaregateListener implements Listener {
         String fromName = entry == null ? "?" : entry.name();
         card.addHistory(time() + " | " + fromName + " > " + station.name() + " | -" + Money.plain(fare));
         plugin.storage().markDirty();
-        openGate(signBlock);
+        gate.open();
         plugin.msg().actionBar(player, "gate.tap-out-bar", "fare", Money.format(fare), "value", Money.format(card.value()));
         playSuccess(player);
         visit(player, station);

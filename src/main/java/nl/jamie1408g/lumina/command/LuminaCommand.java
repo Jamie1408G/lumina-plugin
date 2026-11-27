@@ -1,6 +1,8 @@
 package nl.jamie1408g.lumina.command;
 
 import nl.jamie1408g.lumina.LuminaPlugin;
+import nl.jamie1408g.lumina.card.FaregateListener;
+import nl.jamie1408g.lumina.card.ModelGateManager;
 import nl.jamie1408g.lumina.jobs.JobManager;
 import nl.jamie1408g.lumina.network.Station;
 import nl.jamie1408g.lumina.property.Property;
@@ -87,6 +89,7 @@ public final class LuminaCommand implements TabExecutor {
                 plugin.properties().setPos(player, sub.equals("pos1") ? 0 : 1);
             }
             case "property" -> property(sender, args);
+            case "gate", "gates" -> gate(sender, args);
             case "givecard" -> {
                 if (!check(sender, "lumina.admin.card")) {
                     return true;
@@ -234,6 +237,71 @@ public final class LuminaCommand implements TabExecutor {
         }
     }
 
+    /** /lumina gate place <station> [in|out|both] | remove | rebuild | list */
+    private void gate(CommandSender sender, String[] args) {
+        if (!check(sender, "lumina.admin.signs")) {
+            return;
+        }
+        ModelGateManager gates = plugin.modelGates();
+        String action = args.length < 2 ? "list" : args[1].toLowerCase(Locale.ROOT);
+        switch (action) {
+            case "list" -> {
+                plugin.msg().line(sender, "modelgate.list-header", "count", gates.all().size());
+                for (ModelGateManager.Gate g : gates.all()) {
+                    Station st = plugin.network().network().byKey(g.stationKey());
+                    plugin.msg().line(sender, "modelgate.list-entry", "station", st == null ? g.stationKey() : st.name(),
+                            "mode", g.mode().name().toLowerCase(Locale.ROOT), "x", g.x(), "y", g.y(), "z", g.z(), "world", g.world());
+                }
+            }
+            case "place" -> {
+                if (!(sender instanceof Player player)) {
+                    playersOnly(sender);
+                    return;
+                }
+                if (args.length < 3) {
+                    plugin.msg().send(sender, "modelgate.usage");
+                    return;
+                }
+                FaregateListener.Mode mode = FaregateListener.Mode.BOTH;
+                int end = args.length;
+                String last = args[args.length - 1].toLowerCase(Locale.ROOT);
+                if (args.length >= 4 && (last.equals("in") || last.equals("out") || last.equals("both"))) {
+                    mode = FaregateListener.Mode.valueOf(last.toUpperCase(Locale.ROOT));
+                    end = args.length - 1;
+                }
+                Station station = plugin.network().network().findStation(Cmd.join(args, 2, end));
+                if (station == null) {
+                    plugin.msg().send(sender, "route.unknown-station", "station", Cmd.join(args, 2, end));
+                    return;
+                }
+                String problem = gates.place(player, station, mode);
+                if (problem != null) {
+                    plugin.msg().send(sender, problem);
+                    return;
+                }
+                plugin.msg().send(sender, "modelgate.placed", "station", station.name(), "mode", mode.name().toLowerCase(Locale.ROOT));
+            }
+            case "remove" -> {
+                if (!(sender instanceof Player player)) {
+                    playersOnly(sender);
+                    return;
+                }
+                ModelGateManager.Gate g = gates.near(player.getLocation(), 3);
+                if (g == null) {
+                    plugin.msg().send(sender, "modelgate.none-near");
+                    return;
+                }
+                gates.remove(g);
+                plugin.msg().send(sender, "modelgate.removed");
+            }
+            case "rebuild" -> {
+                int[] r = gates.rebuildAll();
+                plugin.msg().send(sender, "modelgate.rebuilt", "count", r[0], "skipped", r[1]);
+            }
+            default -> plugin.msg().send(sender, "modelgate.usage");
+        }
+    }
+
     private boolean check(CommandSender sender, String permission) {
         if (sender.hasPermission(permission)) {
             return true;
@@ -253,7 +321,7 @@ public final class LuminaCommand implements TabExecutor {
         if (args.length == 1) {
             List<String> subs = new ArrayList<>(List.of("help"));
             if (sender.hasPermission("lumina.admin")) {
-                subs.addAll(List.of("reload", "setstation", "network", "pos1", "pos2", "property", "givecard",
+                subs.addAll(List.of("reload", "setstation", "network", "pos1", "pos2", "property", "gate", "givecard",
                         "card", "blockcard", "unblockcard", "job", "questreset"));
             }
             return Cmd.filter(subs, args[0]);
@@ -266,6 +334,7 @@ public final class LuminaCommand implements TabExecutor {
             return switch (sub) {
                 case "setstation" -> plugin.network().network().completions(args[1]);
                 case "property" -> Cmd.filter(args[1], "create", "delete", "price", "evict");
+                case "gate", "gates" -> Cmd.filter(args[1], "place", "remove", "rebuild", "list");
                 case "givecard", "job", "questreset" -> Cmd.filter(plugin.storage().knownNames(), args[1]);
                 default -> List.of();
             };
@@ -276,6 +345,13 @@ public final class LuminaCommand implements TabExecutor {
                 ids.add(role.id());
             }
             return Cmd.filter(ids, args[2]);
+        }
+        if (args.length >= 3 && (sub.equals("gate") || sub.equals("gates")) && args[1].equalsIgnoreCase("place")) {
+            List<String> options = new ArrayList<>(plugin.network().network().completions(args[args.length - 1]));
+            if (args.length >= 4) {
+                options.addAll(Cmd.filter(args[args.length - 1], "in", "out", "both"));
+            }
+            return options;
         }
         if (args.length == 3 && sub.equals("questreset")) {
             List<String> ids = new ArrayList<>();

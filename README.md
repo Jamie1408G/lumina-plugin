@@ -27,6 +27,7 @@ Eén plugin voor Minecraft Lumina (Spigot/Paper/Purpur 1.21.x, getest tegen de 1
    in        ← of: out, of leeg laten voor in én uit
    ```
    Spelers houden hun Lumina Card vast en klikken op het bord. Het hek gaat dan even open.
+   **Moderne poortjes (3D-model):** ga vóór de plek staan waar het poortje moet komen, kijk in de looprichting en doe `/lumina gate place LM1` (eventueel met `in`, `out` of `both` erachter). Het poortje komt in het blok vóór je; die ruimte moet 2 blokken hoog leeg zijn. Zet er meer naast elkaar voor een rij. Het model lijkt op echte MRT-poortjes in Singapore: stalen kasten van 1,4 m, glazen kleppen in het midden die in de kast schuiven, een kaartlezer en schermpje aan beide kanten, LED-balken en richtingslampjes. Bij een geldige kaart wordt alles groen en gaan de kleppen open, anders wordt alles rood. Er zit geen resourcepack voor nodig. Spelers klikken met hun Lumina Card op het poortje. Weghalen: `/lumina gate remove` (dichtstbijzijnde), overzicht: `/lumina gate list`, na een update van het model: `/lumina gate rebuild`.
 4. **Opwaarderen:** een bord met `[Top Up]` en op regel 2 een bedrag (bijv. `10`).
 5. **Kaartautomaat:** een bord met `[Card Machine]`.
 6. **Woningen:** ga in de ene hoek staan en doe `/lumina pos1`, dan in de andere hoek `/lumina pos2`. Doe daarna `/lumina property create LM-A01 250 Virelia` (id, prijs, wijk).

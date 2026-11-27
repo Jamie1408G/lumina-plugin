@@ -64,6 +64,18 @@ signs:
   machine-line4: "&7Click to buy"
   machine-created: "&aCard machine created."
 
+modelgate:
+  usage: "Use &f/lumina gate place <station> [in|out|both]&7 while facing where the gate goes, or &f/lumina gate remove|rebuild|list"
+  no-world: "&cYou're not in a world."
+  already-there: "&cThere's already a faregate there."
+  not-empty: "&cThe gate goes in the block in front of you, and that space (2 blocks high) has to be empty."
+  placed: "&aModern faregate for &f{station}&a placed &8({mode})&a. Place more side by side for a row; players right-click it with their Lumina Card."
+  none-near: "&cNo modern faregate within 3 blocks."
+  removed: "&aFaregate removed."
+  rebuilt: "&aRebuilt {count} faregate(s).&7 {skipped} were too far away (not loaded); go near them and run this again."
+  list-header: "&b&lModern faregates&7: {count}"
+  list-entry: " &f{station} &8({mode}) &7at {x}, {y}, {z} in {world}"
+
 gate:
   out-of-service: "&cThis gate is out of service (unknown station)."
   hold-card-bar: "&cPlease tap your Lumina Card"
@@ -182,7 +194,7 @@ admin:
   overview-no-card: "&8none"
   overview-no-job: "&8none"
   player-help: "&b&lCommands\n &f/route <from> <to> &8- &7plan a journey\n &f/metro &8- &7lines and stations\n &f/lumicoins &8- &7your wallet\n &f/luminacard &8- &7your Lumina Card\n &f/luminajob &8- &7city jobs\n &f/lquests &8- &7quests\n &f/property &8- &7apartments"
-  admin-help: "&c&lAdmin\n &f/lumina reload &8| &fnetwork &8| &fsetstation <station>\n &f/lumina pos1 &8| &fpos2 &8| &fproperty create <id> <price> [district]\n &f/lumina property delete|price|evict <id>\n &f/lumina givecard <player> [value] &8| &fcard|blockcard|unblockcard <id>\n &f/lumina job <player> <job|none> &8| &fquestreset <player> [quest]\n &f/lumicoins give|take|set <player> <amount>"
+  admin-help: "&c&lAdmin\n &f/lumina reload &8| &fnetwork &8| &fsetstation <station>\n &f/lumina gate place <station> [in|out|both] &8| &fgate remove|rebuild|list\n &f/lumina pos1 &8| &fpos2 &8| &fproperty create <id> <price> [district]\n &f/lumina property delete|price|evict <id>\n &f/lumina givecard <player> [value] &8| &fcard|blockcard|unblockcard <id>\n &f/lumina job <player> <job|none> &8| &fquestreset <player> [quest]\n &f/lumicoins give|take|set <player> <amount>"
   reloaded: "&aReloaded: {lines} lines, {stations} stations, {jobs} jobs, {quests} quests."
   station-set: "&aLocation of &f{station}&a set to {x}, {y}, {z}."
   network-status: "&b&lNetwork&7: {lines} lines, {stations} stations, {missing} without location"
