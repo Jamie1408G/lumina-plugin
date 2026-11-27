@@ -1,0 +1,292 @@
+package nl.jamie1408g.lumina.command;
+
+import nl.jamie1408g.lumina.LuminaPlugin;
+import nl.jamie1408g.lumina.jobs.JobManager;
+import nl.jamie1408g.lumina.network.Station;
+import nl.jamie1408g.lumina.property.Property;
+import nl.jamie1408g.lumina.storage.CardRecord;
+import nl.jamie1408g.lumina.storage.PlayerData;
+import nl.jamie1408g.lumina.util.Money;
+import org.bukkit.Bukkit;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabExecutor;
+import org.bukkit.entity.Player;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+/** /lumina - overview for players, plus all admin tools. */
+public final class LuminaCommand implements TabExecutor {
+
+    private final LuminaPlugin plugin;
+
+    public LuminaCommand(LuminaPlugin plugin) {
+        this.plugin = plugin;
+    }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        String sub = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "" -> overview(sender);
+            case "help" -> {
+                plugin.msg().line(sender, "admin.player-help");
+                if (sender.hasPermission("lumina.admin")) {
+                    plugin.msg().line(sender, "admin.admin-help");
+                }
+            }
+            case "reload" -> {
+                if (check(sender, "lumina.admin.reload")) {
+                    plugin.reload();
+                    plugin.msg().send(sender, "admin.reloaded", "lines", plugin.network().network().lines().size(),
+                            "stations", plugin.network().network().stations().size(),
+                            "quests", plugin.quests().quests().size(), "jobs", plugin.jobs().roles().size());
+                }
+            }
+            case "setstation" -> {
+                if (!check(sender, "lumina.admin.network") || !(sender instanceof Player player)) {
+                    playersOnly(sender);
+                    return true;
+                }
+                Station station = args.length < 2 ? null : plugin.network().network().findStation(Cmd.join(args, 1));
+                if (station == null) {
+                    plugin.msg().send(sender, "route.unknown-station", "station", args.length < 2 ? "" : Cmd.join(args, 1));
+                    return true;
+                }
+                plugin.network().setLocation(station, player.getLocation());
+                plugin.msg().send(sender, "admin.station-set", "station", station.name(),
+                        "x", player.getLocation().getBlockX(), "y", player.getLocation().getBlockY(),
+                        "z", player.getLocation().getBlockZ());
+            }
+            case "network" -> {
+                if (!check(sender, "lumina.admin.network")) {
+                    return true;
+                }
+                List<String> missing = new ArrayList<>();
+                for (Station station : plugin.network().network().stations()) {
+                    if (station.location() == null) {
+                        missing.add(station.codeLabel() + " " + station.name());
+                    }
+                }
+                plugin.msg().line(sender, "admin.network-status", "lines", plugin.network().network().lines().size(),
+                        "stations", plugin.network().network().stations().size(), "missing", missing.size());
+                if (!missing.isEmpty()) {
+                    plugin.msg().line(sender, "admin.network-missing", "list", String.join("&7, &f", missing));
+                }
+                for (String warning : plugin.network().network().warnings()) {
+                    plugin.msg().line(sender, "admin.network-warning", "warning", warning);
+                }
+            }
+            case "pos1", "pos2" -> {
+                if (!check(sender, "lumina.admin.property") || !(sender instanceof Player player)) {
+                    playersOnly(sender);
+                    return true;
+                }
+                plugin.properties().setPos(player, sub.equals("pos1") ? 0 : 1);
+            }
+            case "property" -> property(sender, args);
+            case "givecard" -> {
+                if (!check(sender, "lumina.admin.card")) {
+                    return true;
+                }
+                Player target = args.length < 2 ? null : Bukkit.getPlayerExact(args[1]);
+                if (target == null) {
+                    plugin.msg().send(sender, "general.unknown-player", "player", args.length < 2 ? "" : args[1]);
+                    return true;
+                }
+                long value = args.length >= 3 ? Math.max(0, Money.parse(args[2])) : 0;
+                plugin.data(target);
+                CardRecord card = plugin.cards().giveFree(target, value);
+                plugin.msg().send(sender, "admin.card-given", "player", target.getName(), "id", card.id(),
+                        "value", Money.format(card.value()));
+            }
+            case "card", "blockcard", "unblockcard" -> {
+                if (!check(sender, "lumina.admin.card")) {
+                    return true;
+                }
+                CardRecord card = args.length < 2 ? null : plugin.storage().card(args[1]);
+                if (card == null) {
+                    plugin.msg().send(sender, "admin.unknown-card", "id", args.length < 2 ? "" : args[1]);
+                    return true;
+                }
+                if (!sub.equals("card")) {
+                    card.setBlocked(sub.equals("blockcard"));
+                    plugin.storage().markDirty();
+                }
+                PlayerData owner = plugin.storage().get(card.owner());
+                plugin.msg().line(sender, "admin.card-info", "id", card.id(),
+                        "owner", owner == null ? card.owner().toString() : owner.name(),
+                        "value", Money.format(card.value()), "blocked", card.blocked(),
+                        "tapped", card.tappedIn() == null ? "-" : card.tappedIn());
+            }
+            case "job" -> {
+                if (!check(sender, "lumina.admin.jobs")) {
+                    return true;
+                }
+                if (args.length < 3) {
+                    plugin.msg().send(sender, "admin.job-usage", "label", label);
+                    return true;
+                }
+                PlayerData target = plugin.storage().findByName(args[1]);
+                if (target == null) {
+                    plugin.msg().send(sender, "general.unknown-player", "player", args[1]);
+                    return true;
+                }
+                JobManager.Role role = args[2].equalsIgnoreCase("none") ? null : plugin.jobs().role(args[2]);
+                if (role == null && !args[2].equalsIgnoreCase("none")) {
+                    plugin.msg().send(sender, "jobs.unknown", "job", args[2]);
+                    return true;
+                }
+                plugin.jobs().adminSet(target, role);
+                plugin.msg().send(sender, "admin.job-set", "player", target.name(),
+                        "job", role == null ? "none" : role.name());
+            }
+            case "questreset" -> {
+                if (!check(sender, "lumina.admin.quests")) {
+                    return true;
+                }
+                PlayerData target = args.length < 2 ? null : plugin.storage().findByName(args[1]);
+                if (target == null) {
+                    plugin.msg().send(sender, "general.unknown-player", "player", args.length < 2 ? "" : args[1]);
+                    return true;
+                }
+                plugin.quests().reset(target, args.length >= 3 ? args[2] : null);
+                plugin.msg().send(sender, "admin.quests-reset", "player", target.name());
+            }
+            default -> plugin.msg().send(sender, "admin.unknown-sub", "label", label);
+        }
+        return true;
+    }
+
+    private void overview(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            plugin.msg().line(sender, "admin.player-help");
+            plugin.msg().line(sender, "admin.admin-help");
+            return;
+        }
+        PlayerData data = plugin.data(player);
+        JobManager.Role role = plugin.jobs().roleOf(data);
+        List<CardRecord> cards = plugin.cards().activeCards(player.getUniqueId());
+        plugin.msg().line(player, "admin.overview", "player", player.getName(),
+                "balance", Money.format(data.balance()),
+                "card", cards.isEmpty() ? plugin.msg().get("admin.overview-no-card") : Money.format(cards.get(0).value()),
+                "job", role == null ? plugin.msg().get("admin.overview-no-job") : role.name(),
+                "trips", data.trips(), "distance", Cmd.distance(data.distance()),
+                "stations", data.visitedStations().size(),
+                "properties", plugin.properties().ownedBy(player.getUniqueId()).size());
+        plugin.msg().line(player, "admin.player-help");
+    }
+
+    private void property(CommandSender sender, String[] args) {
+        if (!check(sender, "lumina.admin.property")) {
+            return;
+        }
+        if (args.length < 2) {
+            plugin.msg().send(sender, "admin.property-usage");
+            return;
+        }
+        String action = args[1].toLowerCase(Locale.ROOT);
+        if (action.equals("create")) {
+            if (!(sender instanceof Player player)) {
+                playersOnly(sender);
+                return;
+            }
+            long price = args.length >= 4 ? Money.parse(args[3]) : -1;
+            if (args.length < 4 || price < 0 || !args[2].matches("[A-Za-z0-9_-]{1,32}")) {
+                plugin.msg().send(sender, "admin.property-usage");
+                return;
+            }
+            String district = args.length >= 5 ? Cmd.join(args, 4) : "";
+            Property created = plugin.properties().create(player, args[2], price, district);
+            if (created != null) {
+                plugin.msg().send(sender, "admin.property-created", "id", created.id(), "size", created.size(),
+                        "price", Money.format(created.price()));
+            }
+            return;
+        }
+        Property p = args.length >= 3 ? plugin.properties().get(args[2]) : null;
+        if (p == null) {
+            plugin.msg().send(sender, "property.unknown", "id", args.length >= 3 ? args[2] : "");
+            return;
+        }
+        switch (action) {
+            case "delete" -> {
+                plugin.properties().delete(p);
+                plugin.msg().send(sender, "admin.property-deleted", "id", p.id());
+            }
+            case "price" -> {
+                long price = args.length >= 4 ? Money.parse(args[3]) : -1;
+                if (price < 0) {
+                    plugin.msg().send(sender, "general.invalid-amount");
+                    return;
+                }
+                p.setPrice(price);
+                plugin.properties().save();
+                plugin.msg().send(sender, "admin.property-price", "id", p.id(), "price", Money.format(price));
+            }
+            case "evict" -> {
+                plugin.properties().evict(p);
+                plugin.msg().send(sender, "admin.property-evicted", "id", p.id());
+            }
+            default -> plugin.msg().send(sender, "admin.property-usage");
+        }
+    }
+
+    private boolean check(CommandSender sender, String permission) {
+        if (sender.hasPermission(permission)) {
+            return true;
+        }
+        plugin.msg().send(sender, "general.no-permission");
+        return false;
+    }
+
+    private void playersOnly(CommandSender sender) {
+        if (!(sender instanceof Player)) {
+            plugin.msg().send(sender, "general.players-only");
+        }
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (args.length == 1) {
+            List<String> subs = new ArrayList<>(List.of("help"));
+            if (sender.hasPermission("lumina.admin")) {
+                subs.addAll(List.of("reload", "setstation", "network", "pos1", "pos2", "property", "givecard",
+                        "card", "blockcard", "unblockcard", "job", "questreset"));
+            }
+            return Cmd.filter(subs, args[0]);
+        }
+        if (!sender.hasPermission("lumina.admin")) {
+            return List.of();
+        }
+        String sub = args[0].toLowerCase(Locale.ROOT);
+        if (args.length == 2) {
+            return switch (sub) {
+                case "setstation" -> plugin.network().network().completions(args[1]);
+                case "property" -> Cmd.filter(args[1], "create", "delete", "price", "evict");
+                case "givecard", "job", "questreset" -> Cmd.filter(plugin.storage().knownNames(), args[1]);
+                default -> List.of();
+            };
+        }
+        if (args.length == 3 && sub.equals("job")) {
+            List<String> ids = new ArrayList<>(List.of("none"));
+            for (JobManager.Role role : plugin.jobs().roles()) {
+                ids.add(role.id());
+            }
+            return Cmd.filter(ids, args[2]);
+        }
+        if (args.length == 3 && sub.equals("questreset")) {
+            List<String> ids = new ArrayList<>();
+            plugin.quests().quests().forEach(q -> ids.add(q.id()));
+            return Cmd.filter(ids, args[2]);
+        }
+        if (args.length == 3 && sub.equals("property") && !args[1].equalsIgnoreCase("create")) {
+            List<String> ids = new ArrayList<>();
+            plugin.properties().all().forEach(p -> ids.add(p.id()));
+            return Cmd.filter(ids, args[2]);
+        }
+        return List.of();
+    }
+}
