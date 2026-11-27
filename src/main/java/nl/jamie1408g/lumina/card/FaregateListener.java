@@ -317,7 +317,15 @@ public final class FaregateListener implements Listener {
             fare = distance < 0 ? plugin.network().fares().max() : plugin.network().fares().fare(distance);
             distance = Math.max(0, distance);
         }
+        long noted = 0;
+        boolean rideHome = false;
         if (free) {
+            // Job pass: not charged now, but noted on the job; forgiven only if the job gets completed.
+            noted = fare;
+            plugin.jobs().noteFare(player, fare);
+            fare = 0;
+        } else if (plugin.jobs().useRideHome(player)) {
+            rideHome = true;
             fare = 0;
         }
         if (card.value() < fare) {
@@ -333,7 +341,13 @@ public final class FaregateListener implements Listener {
         card.addHistory(time() + " | " + fromName + " > " + station.name() + " | -" + Money.plain(fare));
         plugin.storage().markDirty();
         gate.open();
-        plugin.msg().actionBar(player, "gate.tap-out-bar", "fare", Money.format(fare), "value", Money.format(card.value()));
+        if (free) {
+            plugin.msg().actionBar(player, "gate.tap-out-job-bar", "fare", Money.format(noted));
+        } else if (rideHome) {
+            plugin.msg().actionBar(player, "gate.tap-out-ride-home-bar", "value", Money.format(card.value()));
+        } else {
+            plugin.msg().actionBar(player, "gate.tap-out-bar", "fare", Money.format(fare), "value", Money.format(card.value()));
+        }
         playSuccess(player);
         visit(player, station);
 

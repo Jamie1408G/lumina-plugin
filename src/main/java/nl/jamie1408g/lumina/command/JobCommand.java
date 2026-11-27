@@ -1,6 +1,7 @@
 package nl.jamie1408g.lumina.command;
 
 import nl.jamie1408g.lumina.LuminaPlugin;
+import nl.jamie1408g.lumina.jobs.JobBoard;
 import nl.jamie1408g.lumina.jobs.JobManager;
 import nl.jamie1408g.lumina.storage.PlayerData;
 import nl.jamie1408g.lumina.util.Money;
@@ -12,7 +13,10 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.List;
 
-/** /luminajob list | join <job> | leave | duty [on|off] | who | call <job> <message> | info */
+/**
+ * /luminajob list | join <job> | leave | duty [on|off] | who | info
+ *            request <job> <message> (also: call) | requests | accept [id] | done [id] | drop | cancel [id]
+ */
 public final class JobCommand implements TabExecutor {
 
     private final LuminaPlugin plugin;
@@ -54,6 +58,18 @@ public final class JobCommand implements TabExecutor {
             return true;
         }
         switch (sub) {
+            case "request", "call", "ask" -> {
+                if (args.length < 2) {
+                    plugin.msg().send(player, "jobs.call-usage", "label", label);
+                    return true;
+                }
+                jobs.request(player, args[1], Cmd.join(args, 2));
+            }
+            case "requests", "board" -> requests(player, label);
+            case "accept" -> jobs.accept(player, number(args, 1));
+            case "done", "complete", "confirm" -> jobs.done(player, number(args, 1));
+            case "drop" -> jobs.drop(player, null);
+            case "cancel" -> jobs.cancel(player, number(args, 1));
             case "join" -> {
                 if (args.length < 2) {
                     plugin.msg().send(player, "jobs.join-usage", "label", label);
@@ -73,13 +89,6 @@ public final class JobCommand implements TabExecutor {
                 }
                 jobs.setDuty(player, wanted);
             }
-            case "call" -> {
-                if (args.length < 3) {
-                    plugin.msg().send(player, "jobs.call-usage", "label", label);
-                    return true;
-                }
-                jobs.call(player, args[1], Cmd.join(args, 2));
-            }
             case "info" -> {
                 PlayerData data = plugin.data(player);
                 JobManager.Role role = jobs.roleOf(data);
@@ -98,12 +107,59 @@ public final class JobCommand implements TabExecutor {
         return true;
     }
 
+    /** Open requests for the player's job, the job they're on, and the requests they made. */
+    private void requests(Player player, String label) {
+        JobManager jobs = plugin.jobs();
+        JobBoard board = jobs.board();
+        PlayerData data = plugin.data(player);
+        JobManager.Role role = jobs.roleOf(data);
+        boolean any = false;
+        if (role != null) {
+            List<JobBoard.Job> open = board.open(role.id());
+            plugin.msg().line(player, "jobs.requests-header", "job", role.name(), "count", open.size());
+            for (JobBoard.Job job : open) {
+                plugin.msg().line(player, "jobs.requests-entry", "id", job.id, "player", job.requesterName,
+                        "message", job.note.isEmpty() ? "-" : job.note,
+                        "minutes", Math.max(0, (System.currentTimeMillis() - job.created) / 60_000), "label", label);
+            }
+            JobBoard.Job mine = board.activeFor(player.getUniqueId());
+            if (mine != null) {
+                plugin.msg().line(player, "jobs.requests-working", "id", mine.id, "player", mine.requesterName,
+                        "fare", Money.format(mine.owed()), "label", label);
+            }
+            any = true;
+        }
+        for (JobBoard.Job job : board.byRequester(player.getUniqueId())) {
+            JobManager.Role r = jobs.role(job.roleKey);
+            plugin.msg().line(player, job.state() == JobBoard.State.ACCEPTED ? "jobs.requests-yours-taken" : "jobs.requests-yours-open",
+                    "id", job.id, "job", r == null ? job.roleKey : r.name(), "player", job.workerName() == null ? "" : job.workerName(),
+                    "label", label);
+            any = true;
+        }
+        if (!any) {
+            plugin.msg().send(player, "jobs.requests-none", "label", label);
+        }
+    }
+
+    private static Integer number(String[] args, int i) {
+        if (args.length <= i) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(args[i].replace("#", "").trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return Cmd.filter(args[0], "list", "join", "leave", "duty", "who", "call", "info");
+            return Cmd.filter(args[0], "list", "join", "leave", "duty", "who", "info",
+                    "request", "requests", "accept", "done", "drop", "cancel");
         }
-        if (args.length == 2 && (args[0].equalsIgnoreCase("join") || args[0].equalsIgnoreCase("call"))) {
+        if (args.length == 2 && (args[0].equalsIgnoreCase("join") || args[0].equalsIgnoreCase("call")
+                || args[0].equalsIgnoreCase("request"))) {
             List<String> ids = new ArrayList<>();
             for (JobManager.Role role : plugin.jobs().roles()) {
                 ids.add(role.id());

@@ -71,6 +71,13 @@ jobs:
   afk-minutes: 5
   # Waiting time before a player can switch to another job.
   switch-cooldown-minutes: 60
+  # Job requests (/luminajob request). Jobs with free-travel go through the faregates for free while
+  # working on an accepted request, but those fares are only forgiven when the person who asked
+  # confirms it's done (/luminajob done). Dropped or timed-out jobs are charged after all.
+  job-time-limit-minutes: 60
+  request-expires-minutes: 120
+  # After a confirmed job, the worker's next tap-out within this time is free too.
+  free-ride-home-minutes: 30
   roles:
     lupa-builder:
       name: "&aLUPA Builder"
@@ -98,7 +105,7 @@ jobs:
       max-players: 0
       permission: ""
       property-bypass: false
-      # Staff on duty travel for free through the faregates.
+      # Free through the faregates while working on an accepted job request (only if it gets completed).
       free-travel: true
 
 # ---------- Quests ----------

@@ -41,7 +41,8 @@ Eén plugin voor Minecraft Lumina (Spigot/Paper/Purpur 1.21.x, getest tegen de 1
 | `/metro lines \| line <code> \| station <naam> \| nearest` | Netwerkinfo |
 | `/lumicoins` · `pay` · `top` | Wallet, betalen, ranglijst |
 | `/luminacard buy \| info \| topup <bedrag> \| history \| replace` | Lumina Card |
-| `/luminajob list \| join \| leave \| duty \| who \| call <baan> <bericht>` | Stadsbanen |
+| `/luminajob list \| join \| leave \| duty \| who \| info` | Stadsbanen |
+| `/luminajob request <baan> <wat je nodig hebt> \| requests \| accept [id] \| done [id] \| drop \| cancel [id]` | Klussen aanvragen en aannemen |
 | `/lquests` | Quests en voortgang |
 | `/property list \| info \| buy \| sell \| mine \| trust \| untrust` | Woningen |
 
@@ -53,7 +54,7 @@ Admin: `/lumina reload | network | setstation | pos1 | pos2 | property … | giv
 
 - **Tarief:** `basis + per-km × afstand`, begrensd tussen min en max (zie `fares` in `config.yml`). De afstand is de kortste route over het netwerk. Overstappen binnen de poortjes is gratis.
 - **Vergeten uit te checken?** Bij de volgende keer inchecken betaal je het `incomplete-trip-fare`. Wie binnen 5 minuten bij hetzelfde station weer uitcheckt, betaalt niets.
-- **MRT Staff en Lumina Authority** reizen gratis zolang ze on duty zijn (`free-travel`).
+- **Gratis reizen voor banen, alleen als de klus echt af is.** Iemand vraagt hulp met `/luminajob request mrt-staff lift kapot bij LM3`. Wie on duty is in die baan, neemt de klus aan met `/luminajob accept <id>`. Banen met `free-travel` (MRT Staff, Lumina Authority) komen daarna gratis door de poortjes, maar de ritprijzen worden bijgehouden. Ze vervallen pas als de aanvrager met `/luminajob done` bevestigt dat de klus af is; dan is ook de rit terug gratis (binnen 30 min). Bij `drop`, ontslag of als de tijd om is (60 min), wordt de bijgehouden ritprijs alsnog van de kaart afgeschreven. Annuleert de aanvrager, dan betaalt de werker niets.
 - **Salaris:** je verdient alleen tijdens actieve tijd on duty. Wie 5 minuten niet beweegt, verdient tijdelijk niets.
 - **Veilig tegoed:** het kaarttegoed staat op de server, niet op het item. Een gekopieerde kaart levert dus geen extra geld op.
 - **Bescherming van woningen** kan uit met `property.protection: false` als een andere plugin dat al regelt.
