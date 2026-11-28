@@ -63,6 +63,7 @@ public final class LrtFareListener implements Listener {
     private double radius = 12;
     private double heightRange = 12;
     private long graceMillis = 120_000L;
+    private long fine = 20_000L;
 
     public LrtFareListener(LuminaPlugin plugin) {
         this.plugin = plugin;
@@ -74,6 +75,7 @@ public final class LrtFareListener implements Listener {
         radius = Math.max(1, c.getDouble("lrt.boarding-radius", 12));
         heightRange = Math.max(1, c.getDouble("lrt.boarding-height", 12));
         graceMillis = Math.max(0, c.getLong("lrt.reboard-grace-seconds", 120)) * 1000L;
+        fine = Math.max(0, Money.fromDouble(c.getDouble("lrt.fine", 200.00)));
     }
 
     private FareCalculator fares() {
@@ -101,12 +103,20 @@ public final class LrtFareListener implements Listener {
 
         CardRecord card = plugin.cards().cardOnPlayer(player);
         if (card == null) {
+            if (fine > 0) {
+                fineRider(player, station, null, event, now);
+                return;
+            }
             event.setCancelled(true);
             plugin.msg().send(player, "lrt.no-card", "station", station.name());
             plugin.gates().playDeny(player);
             return;
         }
         if (card.blocked()) {
+            if (fine > 0 && !plugin.passes().active(card.owner())) {
+                fineRider(player, station, card, event, now);
+                return;
+            }
             event.setCancelled(true);
             plugin.msg().send(player, "card.blocked");
             plugin.gates().playDeny(player);
@@ -139,6 +149,10 @@ public final class LrtFareListener implements Listener {
             return;
         }
         if (!plugin.cards().ensureValue(player, card, start)) {
+            if (fine > 0) {
+                fineRider(player, station, card, event, now);
+                return;
+            }
             event.setCancelled(true);
             plugin.msg().send(player, "lrt.insufficient", "fare", Money.format(start), "value", Money.format(card.value()));
             plugin.gates().playDeny(player);
@@ -152,6 +166,31 @@ public final class LrtFareListener implements Listener {
         plugin.gates().playSuccess(player);
         plugin.msg().actionBar(player, "lrt.paid-bar", "station", station.name(), "fare", Money.format(start),
                 "value", Money.format(card.value()));
+    }
+
+    /**
+     * Boarding without a valid ticket (no card, a blocked card, or not enough for the starting fare):
+     * a fine from the wallet instead of the fare, and the ride goes on. Can't pay the fine either?
+     * Then they can't get in.
+     */
+    private void fineRider(Player player, Station station, CardRecord card, VehicleEnterEvent event, long now) {
+        if (!plugin.economy().withdraw(player.getUniqueId(), fine, "LRT fine at " + station.name())) {
+            event.setCancelled(true);
+            plugin.msg().send(player, "lrt.fine-cannot-pay", "fine", Money.format(fine),
+                    "balance", Money.format(plugin.data(player).balance()), "station", station.name());
+            plugin.gates().playDeny(player);
+            return;
+        }
+        if (card != null) {
+            card.addHistory(FaregateListener.time() + " | LRT fine at " + station.name() + " | wallet -" + Money.plain(fine));
+        }
+        plugin.storage().markDirty();
+        begin(player, new Ride(station, Pay.FREE, card == null ? null : card.id(), 0, now), station);
+        player.sendTitle(plugin.msg().get("lrt.fine-title"), plugin.msg().get("lrt.fine-subtitle", "fine", Money.format(fine)),
+                5, 50, 15);
+        plugin.msg().send(player, "lrt.fined", "fine", Money.format(fine), "station", station.name(),
+                "balance", Money.format(plugin.data(player).balance()));
+        plugin.gates().playDeny(player);
     }
 
     private void begin(Player player, Ride ride, Station station) {
@@ -230,29 +269,23 @@ public final class LrtFareListener implements Listener {
         Station best = null;
         double bestD = Double.MAX_VALUE;
         for (Station s : plugin.network().network().stations()) {
-            StationLocation at = s.location();
-            if (at == null || !onLrt(s)) {
-                continue;
-            }
-            double d = at.horizontalDistance(world, l.getX(), l.getZ());
-            if (d < 0 || d > radius || Math.abs(at.y() - l.getY()) > heightRange) {
-                continue;
-            }
-            if (d < bestD) {
-                bestD = d;
-                best = s;
+            // The LRT line's own platform where it's set (interchanges), else the station's location.
+            for (String code : s.lineCodes()) {
+                Line line = plugin.network().network().line(code);
+                StationLocation at = line == null || !line.isLrt() ? null : s.locationOn(code);
+                if (at == null) {
+                    continue;
+                }
+                double d = at.horizontalDistance(world, l.getX(), l.getZ());
+                if (d < 0 || d > radius || Math.abs(at.y() - l.getY()) > heightRange) {
+                    continue;
+                }
+                if (d < bestD) {
+                    bestD = d;
+                    best = s;
+                }
             }
         }
         return best;
-    }
-
-    private boolean onLrt(Station s) {
-        for (String code : s.lineCodes()) {
-            Line line = plugin.network().network().line(code);
-            if (line != null && line.isLrt()) {
-                return true;
-            }
-        }
-        return false;
     }
 }

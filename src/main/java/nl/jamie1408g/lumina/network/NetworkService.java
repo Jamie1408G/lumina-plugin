@@ -98,6 +98,22 @@ public final class NetworkService {
             }
         }
 
+        // platforms: one spot per line at an interchange, by station code (LM2, CT2, ...).
+        ConfigurationSection platforms = yaml.getConfigurationSection("platforms");
+        if (platforms != null) {
+            for (String code : platforms.getKeys(false)) {
+                ConfigurationSection loc = platforms.getConfigurationSection(code);
+                String line = fresh.lineOfCode(code);
+                Station station = line == null ? null : fresh.findStation(code);
+                if (loc == null || station == null) {
+                    plugin.getLogger().warning("network.yml: platforms: unknown station code '" + code + "'.");
+                    continue;
+                }
+                station.setPlatform(line, new StationLocation(loc.getString("world", "world"),
+                        loc.getDouble("x"), loc.getDouble("y"), loc.getDouble("z")));
+            }
+        }
+
         for (String warning : fresh.warnings()) {
             plugin.getLogger().warning("network.yml: " + warning);
         }
@@ -216,6 +232,34 @@ public final class NetworkService {
             yaml.save(file);
         } catch (IOException e) {
             plugin.getLogger().log(Level.SEVERE, "Could not save network.yml", e);
+        }
+    }
+
+    /**
+     * Sets the platform of one line at a station (lineCode, from a code like CT2), so interchanges
+     * can have a spot per line. The station's own location is set too when it has none yet, and
+     * always for a station with just one line.
+     */
+    public void setPlatform(Station station, String lineCode, Location location) {
+        if (location.getWorld() == null) {
+            return;
+        }
+        String code = station.codeOn(lineCode);
+        if (code == null) {
+            setLocation(station, location);
+            return;
+        }
+        station.setPlatform(lineCode, new StationLocation(location.getWorld().getName(),
+                location.getX(), location.getY(), location.getZ()));
+        String base = "platforms." + code + ".";
+        yaml.set(base + "world", location.getWorld().getName());
+        yaml.set(base + "x", Math.round(location.getX() * 10) / 10.0);
+        yaml.set(base + "y", Math.round(location.getY() * 10) / 10.0);
+        yaml.set(base + "z", Math.round(location.getZ() * 10) / 10.0);
+        if (station.location() == null || !station.isInterchange()) {
+            setLocation(station, location); // also saves
+        } else {
+            save();
         }
     }
 

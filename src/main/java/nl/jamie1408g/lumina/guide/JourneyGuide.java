@@ -3,6 +3,7 @@ package nl.jamie1408g.lumina.guide;
 import nl.jamie1408g.lumina.LuminaPlugin;
 import nl.jamie1408g.lumina.api.TripCompletedEvent;
 import nl.jamie1408g.lumina.network.Place;
+import nl.jamie1408g.lumina.network.Route;
 import nl.jamie1408g.lumina.network.Station;
 import nl.jamie1408g.lumina.network.StationLocation;
 import org.bukkit.Bukkit;
@@ -25,37 +26,44 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * Guides a player from the station to a place. After /route to a place (with a location), a bar
- * shows where to get off. Once they get off the train there (or tap out at that station), the place
- * is highlighted: a bar with the distance and an arrow that follows where they look, a particle trail
- * towards it, a light column on the spot and, for players who turned it on, a waypoint for Xaero's
- * Minimap. It ends when they arrive, with /route stop, or after a while.
+ * Guides a player along a planned journey. Each change of line is a step: a bar says where to
+ * change, and once they get off the train there the way to the other line's platform is
+ * highlighted (when that platform has its own spot, /lumina setstation CT2). A place at the end
+ * is the last step: after getting off (or tapping out) at its station, the place is highlighted.
+ * Highlighting means: a bar with the distance and an arrow that follows where they look, a particle
+ * trail towards it, a light column on the spot and, for players who turned it on, a waypoint for
+ * Xaero's Minimap. It ends at the last step, with /route stop, or after a while.
  */
 public final class JourneyGuide implements Listener {
 
     private enum Stage { WAITING, GUIDING }
 
+    /** One step: get off at a station (arriving on a line), then maybe walk to a target. */
+    private record Step(boolean transfer, String stationKey, String stationName, String arrivingLine,
+                        StationLocation target, String targetName, String lineName, String towards) {
+    }
+
     private static final class Guide {
-        final String placeName;
-        final StationLocation target;
-        final String stationKey;
-        final String stationName;
+        final List<Step> steps;
         final BossBar bar;
+        int index;
         Stage stage = Stage.WAITING;
         long since = System.currentTimeMillis();
         double startDistance = 1;
 
-        Guide(String placeName, StationLocation target, String stationKey, String stationName, BossBar bar) {
-            this.placeName = placeName;
-            this.target = target;
-            this.stationKey = stationKey;
-            this.stationName = stationName;
+        Guide(List<Step> steps, BossBar bar) {
+            this.steps = steps;
             this.bar = bar;
+        }
+
+        Step step() {
+            return steps.get(index);
         }
     }
 
@@ -101,24 +109,40 @@ public final class JourneyGuide implements Listener {
     // ------------------------------------------------------------ starting and stopping
 
     /**
-     * Called after /route to a place. alightAt is the station the planner picked. alreadyThere:
-     * the player is at that station now, so guiding starts straight away. False if the place has
-     * no location (nothing to guide to) or guiding is off.
+     * Called after /route. Makes a step for every change of line and, if place has a location, one
+     * for the place at the end. alreadyThere: the player is at the place's station now (an empty
+     * route), so the place is highlighted straight away. False if there's nothing to guide.
      */
-    public boolean plan(Player player, Place place, Station alightAt, boolean alreadyThere) {
-        if (!enabled || place.location() == null) {
+    public boolean plan(Player player, Route route, Place place, boolean alreadyThere) {
+        if (!enabled) {
+            return false;
+        }
+        List<Step> steps = new ArrayList<>();
+        List<Route.Leg> legs = route.legs();
+        for (int i = 1; i < legs.size(); i++) {
+            Route.Leg before = legs.get(i - 1);
+            Route.Leg next = legs.get(i);
+            Station at = next.from();
+            String nextLine = next.line().code();
+            steps.add(new Step(true, at.key(), at.name(), before.line().code(), at.platform(nextLine),
+                    next.line().color() + next.line().name(), next.line().color() + next.line().name(), next.towards()));
+        }
+        if (place != null && place.location() != null) {
+            String arriving = legs.isEmpty() ? null : legs.get(legs.size() - 1).line().code();
+            steps.add(new Step(false, route.to().key(), route.to().name(), arriving, place.location(),
+                    place.name(), null, null));
+        }
+        if (steps.isEmpty()) {
             return false;
         }
         stop(player.getUniqueId());
-        BossBar bar = null;
-        if (showBar) {
-            bar = Bukkit.createBossBar(plugin.msg().get("guide.bar-waiting", "place", place.name(),
-                    "station", alightAt.name()), BarColor.BLUE, BarStyle.SOLID);
-            bar.setProgress(0);
+        BossBar bar = showBar ? Bukkit.createBossBar("", BarColor.BLUE, BarStyle.SOLID) : null;
+        if (bar != null) {
             bar.addPlayer(player);
         }
-        Guide guide = new Guide(place.name(), place.location(), alightAt.key(), alightAt.name(), bar);
+        Guide guide = new Guide(steps, bar);
         guides.put(player.getUniqueId(), guide);
+        waitFor(guide);
         if (alreadyThere) {
             begin(player, guide);
         }
@@ -150,19 +174,46 @@ public final class JourneyGuide implements Listener {
         }
     }
 
-    /** Got off at the right station: highlight the place. */
+    /** The bar for the step we're riding towards. */
+    private void waitFor(Guide guide) {
+        guide.stage = Stage.WAITING;
+        guide.since = System.currentTimeMillis();
+        if (guide.bar == null) {
+            return;
+        }
+        Step step = guide.step();
+        guide.bar.setColor(BarColor.BLUE);
+        guide.bar.setProgress(0);
+        guide.bar.setTitle(step.transfer()
+                ? plugin.msg().get("guide.bar-change", "station", step.stationName(), "line", step.lineName(), "towards", step.towards())
+                : plugin.msg().get("guide.bar-waiting", "place", step.targetName(), "station", step.stationName()));
+    }
+
+    /** Got off at the step's station: highlight where to go (or, without a spot, just say it). */
     private void begin(Player player, Guide guide) {
+        Step step = guide.step();
+        if (step.target() == null) {
+            // A change of line without its own platform spot: say where to go, then wait for the next step.
+            plugin.msg().send(player, "guide.change-here", "line", step.lineName(), "towards", step.towards());
+            next(player, guide);
+            return;
+        }
         guide.stage = Stage.GUIDING;
         guide.since = System.currentTimeMillis();
-        double distance = distance(player.getLocation(), guide.target);
+        double distance = distance(player.getLocation(), step.target());
         guide.startDistance = Math.max(1, distance);
         if (guide.bar != null) {
             guide.bar.setColor(BarColor.GREEN);
         }
-        plugin.msg().send(player, "guide.start", "place", guide.placeName,
-                "distance", Math.round(distance), "direction", compass(player.getLocation(), guide.target));
-        if (plugin.data(player).xaeroWaypoints()) {
-            sendXaeroWaypoint(player, guide);
+        if (step.transfer()) {
+            plugin.msg().send(player, "guide.start-change", "line", step.lineName(), "towards", step.towards(),
+                    "distance", Math.round(distance), "direction", compass(player.getLocation(), step.target()));
+        } else {
+            plugin.msg().send(player, "guide.start", "place", step.targetName(),
+                    "distance", Math.round(distance), "direction", compass(player.getLocation(), step.target()));
+            if (plugin.data(player).xaeroWaypoints()) {
+                sendXaeroWaypoint(player, step);
+            }
         }
         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 0.8f, 1.4f);
         if (distance >= 0 && distance <= arriveRadius) {
@@ -171,10 +222,28 @@ public final class JourneyGuide implements Listener {
     }
 
     private void arrive(Player player, Guide guide) {
+        Step step = guide.step();
+        if (step.transfer()) {
+            player.sendTitle(plugin.msg().get("guide.platform-title", "line", step.lineName()),
+                    plugin.msg().get("guide.platform-subtitle", "towards", step.towards()), 5, 40, 10);
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 1f, 1.8f);
+            next(player, guide);
+            return;
+        }
         stop(player.getUniqueId());
-        player.sendTitle(plugin.msg().get("guide.arrived-title", "place", guide.placeName),
-                plugin.msg().get("guide.arrived-subtitle", "place", guide.placeName), 10, 50, 15);
+        player.sendTitle(plugin.msg().get("guide.arrived-title", "place", step.targetName()),
+                plugin.msg().get("guide.arrived-subtitle", "place", step.targetName()), 10, 50, 15);
         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 1f, 2f);
+    }
+
+    /** On to the next step, or done. */
+    private void next(Player player, Guide guide) {
+        guide.index++;
+        if (guide.index >= guide.steps.size()) {
+            stop(player.getUniqueId());
+            return;
+        }
+        waitFor(guide);
     }
 
     // ------------------------------------------------------------ getting off at the right station
@@ -182,8 +251,8 @@ public final class JourneyGuide implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onTapOut(TripCompletedEvent event) {
         Guide guide = guides.get(event.getPlayer().getUniqueId());
-        if (guide != null && guide.stage == Stage.WAITING && event.getTo() != null
-                && event.getTo().key().equals(guide.stationKey)) {
+        if (guide != null && guide.stage == Stage.WAITING && !guide.step().transfer() && event.getTo() != null
+                && event.getTo().key().equals(guide.step().stationKey())) {
             begin(event.getPlayer(), guide);
         }
     }
@@ -197,13 +266,16 @@ public final class JourneyGuide implements Listener {
         if (guide == null || guide.stage != Stage.WAITING) {
             return;
         }
-        Station station = plugin.network().network().byKey(guide.stationKey);
-        if (station == null || station.location() == null) {
-            return; // no location for the station: tapping out there still works
+        Step step = guide.step();
+        Station station = plugin.network().network().byKey(step.stationKey());
+        // Where the train we came on stops: that line's platform, else the station's location.
+        StationLocation stop = station == null ? null
+                : step.arrivingLine() == null ? station.location() : station.locationOn(step.arrivingLine());
+        if (stop == null) {
+            return; // no location for the station: tapping out there still works for a place
         }
         Location at = event.getVehicle().getLocation();
-        double away = at.getWorld() == null ? -1
-                : station.location().horizontalDistance(at.getWorld().getName(), at.getX(), at.getZ());
+        double away = at.getWorld() == null ? -1 : stop.horizontalDistance(at.getWorld().getName(), at.getX(), at.getZ());
         if (away >= 0 && away <= stationRadius) {
             begin(player, guide);
         }
@@ -226,7 +298,7 @@ public final class JourneyGuide implements Listener {
             if (player == null || now - guide.since > limit) {
                 stop(entry.getKey());
                 if (player != null) {
-                    plugin.msg().send(player, "guide.timeout", "place", guide.placeName);
+                    plugin.msg().send(player, "guide.timeout");
                 }
                 continue;
             }
@@ -237,11 +309,13 @@ public final class JourneyGuide implements Listener {
     }
 
     private void guideStep(Player player, Guide guide) {
+        Step step = guide.step();
+        StationLocation target = step.target();
         Location l = player.getLocation();
-        double distance = distance(l, guide.target);
+        double distance = distance(l, target);
         if (distance < 0) {
             if (guide.bar != null) {
-                guide.bar.setTitle(plugin.msg().get("guide.bar-other-world", "place", guide.placeName));
+                guide.bar.setTitle(plugin.msg().get("guide.bar-other-world", "place", step.targetName()));
             }
             return;
         }
@@ -250,15 +324,16 @@ public final class JourneyGuide implements Listener {
             return;
         }
         if (guide.bar != null) {
-            guide.bar.setTitle(plugin.msg().get("guide.bar", "place", guide.placeName,
-                    "distance", Math.round(distance), "arrow", arrow(l, guide.target)));
+            guide.bar.setTitle(plugin.msg().get(step.transfer() ? "guide.bar-to-platform" : "guide.bar",
+                    "place", step.targetName(), "line", step.lineName(), "towards", step.towards(),
+                    "distance", Math.round(distance), "arrow", arrow(l, target)));
             guide.bar.setProgress(Math.max(0, Math.min(1, 1 - distance / guide.startDistance)));
         }
-        double dx = guide.target.x() - l.getX();
-        double dz = guide.target.z() - l.getZ();
+        double dx = target.x() - l.getX();
+        double dz = target.z() - l.getZ();
         double length = Math.hypot(dx, dz);
         if (trail && length > 0) {
-            // Dots on the ground, from just ahead of the player towards the place.
+            // Dots on the ground, from just ahead of the player towards the spot.
             double ux = dx / length;
             double uz = dz / length;
             double y = l.getY() + 0.25;
@@ -269,7 +344,7 @@ public final class JourneyGuide implements Listener {
         if (distance <= 48) {
             // A column of light on the spot.
             for (double h = 0; h < 12; h += 0.5) {
-                player.spawnParticle(Particle.END_ROD, guide.target.x(), guide.target.y() + h, guide.target.z(), 1, 0, 0, 0, 0);
+                player.spawnParticle(Particle.END_ROD, target.x(), target.y() + h, target.z(), 1, 0, 0, 0, 0);
             }
         }
     }
@@ -281,12 +356,13 @@ public final class JourneyGuide implements Listener {
      * one click: xaero-waypoint:name:initials:x:y:z:colour:false:0:Internal-dimension. Only sent to
      * players who turned it on (/route xaero), as other players would just see the raw line.
      */
-    private void sendXaeroWaypoint(Player player, Guide guide) {
-        String name = guide.placeName.replace(':', ' ').trim();
+    private void sendXaeroWaypoint(Player player, Step step) {
+        StationLocation target = step.target();
+        String name = step.targetName().replace(':', ' ').trim();
         String line = "xaero-waypoint:" + name + ":" + initials(name) + ":"
-                + (int) Math.floor(guide.target.x()) + ":" + (int) Math.floor(guide.target.y()) + ":"
-                + (int) Math.floor(guide.target.z()) + ":" + xaeroColor + ":false:0:Internal-" + dimension(guide.target.world());
-        plugin.msg().send(player, "guide.xaero-intro", "place", guide.placeName);
+                + (int) Math.floor(target.x()) + ":" + (int) Math.floor(target.y()) + ":"
+                + (int) Math.floor(target.z()) + ":" + xaeroColor + ":false:0:Internal-" + dimension(target.world());
+        plugin.msg().send(player, "guide.xaero-intro", "place", step.targetName());
         player.sendMessage("<Lumina> " + line);
     }
 

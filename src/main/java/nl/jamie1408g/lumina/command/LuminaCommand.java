@@ -60,15 +60,31 @@ public final class LuminaCommand implements TabExecutor {
                     playersOnly(sender);
                     return true;
                 }
-                Station station = args.length < 2 ? null : plugin.network().network().findStation(Cmd.join(args, 1));
+                String query = args.length < 2 ? "" : Cmd.join(args, 1);
+                Station station = plugin.network().network().findStation(query);
                 if (station == null) {
-                    plugin.msg().send(sender, "route.unknown-station", "station", args.length < 2 ? "" : Cmd.join(args, 1));
+                    plugin.msg().send(sender, "route.unknown-station", "station", query);
                     return true;
                 }
-                plugin.network().setLocation(station, player.getLocation());
-                plugin.msg().send(sender, "admin.station-set", "station", station.name(),
-                        "x", player.getLocation().getBlockX(), "y", player.getLocation().getBlockY(),
-                        "z", player.getLocation().getBlockZ());
+                // A code (LM2, CT2) sets that line's platform; at an interchange each line can have its own.
+                String line = plugin.network().network().lineOfCode(query);
+                Location at = player.getLocation();
+                if (line != null) {
+                    plugin.network().setPlatform(station, line, at);
+                    var l = plugin.network().network().line(line);
+                    plugin.msg().send(sender, station.isInterchange() ? "admin.platform-set" : "admin.station-set",
+                            "station", station.name(), "code", query.trim().toUpperCase(Locale.ROOT),
+                            "line", l == null ? line : l.color() + l.name(),
+                            "x", at.getBlockX(), "y", at.getBlockY(), "z", at.getBlockZ());
+                } else {
+                    plugin.network().setLocation(station, at);
+                    plugin.msg().send(sender, "admin.station-set", "station", station.name(),
+                            "x", at.getBlockX(), "y", at.getBlockY(), "z", at.getBlockZ());
+                    if (station.isInterchange()) {
+                        plugin.msg().send(sender, "admin.platform-tip", "station", station.name(),
+                                "codes", String.join(", ", station.codes()));
+                    }
+                }
             }
             case "network" -> {
                 if (!check(sender, "lumina.admin.network")) {
@@ -84,6 +100,21 @@ public final class LuminaCommand implements TabExecutor {
                         "stations", plugin.network().network().stations().size(), "missing", missing.size());
                 if (!missing.isEmpty()) {
                     plugin.msg().line(sender, "admin.network-missing", "list", String.join("&7, &f", missing));
+                }
+                List<String> noPlatform = new ArrayList<>();
+                for (Station station : plugin.network().network().stations()) {
+                    if (!station.isInterchange()) {
+                        continue;
+                    }
+                    for (String lineCode : station.lineCodes()) {
+                        String code = station.codeOn(lineCode);
+                        if (code != null && station.platform(lineCode) == null) {
+                            noPlatform.add(code);
+                        }
+                    }
+                }
+                if (!noPlatform.isEmpty()) {
+                    plugin.msg().line(sender, "admin.network-platforms", "list", String.join("&7, &f", noPlatform));
                 }
                 for (String warning : plugin.network().network().warnings()) {
                     plugin.msg().line(sender, "admin.network-warning", "warning", warning);
@@ -618,7 +649,8 @@ public final class LuminaCommand implements TabExecutor {
             case "list" -> {
                 plugin.msg().line(sender, "machine.list-header", "count", machines.all().size());
                 for (var m : machines.all()) {
-                    plugin.msg().line(sender, "machine.list-entry", "x", m.x(), "y", m.y(), "z", m.z(), "world", m.world());
+                    plugin.msg().line(sender, "machine.list-entry", "type", m.type().name(), "x", m.x(), "y", m.y(), "z", m.z(),
+                            "world", m.world());
                 }
             }
             case "place" -> {
@@ -626,8 +658,14 @@ public final class LuminaCommand implements TabExecutor {
                     playersOnly(sender);
                     return;
                 }
-                String problem = machines.place(player);
-                plugin.msg().send(sender, problem == null ? "machine.placed" : problem);
+                var type = args.length < 3 ? nl.jamie1408g.lumina.machine.TicketMachineModel.Type.MRT
+                        : nl.jamie1408g.lumina.machine.TicketMachineModel.Type.parse(args[2]);
+                if (type == null) {
+                    plugin.msg().send(sender, "machine.usage");
+                    return;
+                }
+                String problem = machines.place(player, type);
+                plugin.msg().send(sender, problem == null ? "machine.placed" : problem, "type", type.name());
             }
             case "remove" -> {
                 if (!(sender instanceof Player player)) {
@@ -771,6 +809,9 @@ public final class LuminaCommand implements TabExecutor {
                 }
                 return Cmd.filter(names, args[2]);
             }
+        }
+        if (args.length == 3 && (sub.equals("machine") || sub.equals("machines")) && args[1].equalsIgnoreCase("place")) {
+            return Cmd.filter(args[2], "mrt", "lrt");
         }
         if (args.length == 3 && sub.equals("job")) {
             List<String> ids = new ArrayList<>(List.of("none"));

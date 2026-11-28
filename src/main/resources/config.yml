@@ -111,6 +111,10 @@ lrt:
   boarding-height: 12
   # Getting off and on again (changing seats or trains) within this time continues the same ride.
   reboard-grace-seconds: 120
+  # Getting in without a valid ticket (no Lumina Card, a blocked card, or not enough on it for the
+  # starting fare even after auto top-up) costs this fine from the wallet; the ride is then free.
+  # Can't pay the fine either? Then they can't get in. 0 = no fines: they just can't get in.
+  fine: 200.00
 
 faregates:
   # How long the gate stays open (ticks, 20 ticks = 1 second).

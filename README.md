@@ -20,6 +20,7 @@ Eén plugin voor Minecraft Lumina (Spigot/Paper/Purpur 1.21.x, getest tegen de 1
 
 1. **Lijnen:** pas `network.yml` aan naar je echte lijnen en stations. Gebruik per station het formaat `CODE Naam`, bijvoorbeeld `LM1 Tanjong Gateway`. Heeft een station op twee lijnen dezelfde naam, dan is het een overstapstation. Doe daarna `/lumina reload`.
 2. **Stationslocaties:** ga op elk station staan en doe `/lumina setstation LM1`. Daarmee kloppen afstanden, tarieven en `/metro nearest`. Met `/lumina network` zie je welke stations nog geen locatie hebben.
+   **Overstapstations:** geef elke lijn zijn eigen perron. Ga op het perron van de Lumina Line staan en doe `/lumina setstation LM2`, dan op het perron van de CrossTown Line `/lumina setstation CT2`. Wie daar overstapt, wordt dan van het ene perron naar het andere geleid (zie *Begeleiding*), afstanden en tarieven rekenen per perron, en een LRT-lijn gebruikt zijn eigen perron om het instappen te herkennen. `/lumina network` laat zien welke overstapperrons nog geen eigen plek hebben. Met de stationsnaam (`/lumina setstation Civic Skyline`) zet je één plek voor het hele station.
 3. **Poortjes:** zet een bord naast een hek (fence gate), deur of trapdoor:
    ```
    [Faregate]
@@ -86,6 +87,8 @@ Plant een speler een reis naar een plaats met een locatie, dan staat bovenin een
 - op de plek zelf staat een lichtzuil (zichtbaar vanaf ongeveer 30 blokken);
 - bij aankomst (binnen `guide.arrive-radius`) verschijnt de naam van de plaats in beeld met *You've arrived*.
 
+**Overstappen:** heeft een reis een overstap, dan staat in de balk *Change at Civic Skyline to CrossTown Line towards Vivora*. Stap je daar uit de trein, dan wordt het perron van de volgende lijn uitgelicht (balk met afstand en pijl, groen spoor, lichtzuil); op het perron verschijnt de lijn met *towards Vivora* in beeld, en gaat de balk door naar de volgende overstap of de bestemming. Dit werkt voor elke reis met een overstap, ook naar een gewoon station, zodra de perrons een eigen plek hebben (`/lumina setstation CT2`); zonder plek krijg je alleen de melding waar je moet overstappen.
+
 Sta je al op het goede station, dan begint het meteen. `/route stop` stopt de begeleiding; na 45 minuten wachten of 10 minuten lopen stopt hij vanzelf. Instellingen staan in `config.yml` onder `guide:`.
 
 **Xaero's Minimap:** spelers met Xaero's Minimap/World Map doen één keer `/route xaero`. Bij het uitstappen krijgen ze dan ook een waypoint in de chat in het deelformaat van Xaero (`xaero-waypoint:…`), waar ze op *[Add]* klikken; dan staat de bestemming op de minimap, de wereldkaart en als baken in de wereld. Het staat standaard uit, omdat spelers zonder de mod alleen een onleesbare regel zouden zien. Uitzetten: `/route xaero off`.
@@ -94,7 +97,8 @@ Sta je al op het goede station, dan begint het meteen. `/route stop` stopt de be
 
 Een kaartautomaat is een 3D-automaat op het station, net als de poortjes gemaakt van display-entities (geen resourcepack nodig): een witte kast van 2 m hoog met een blauwe kop met *LUMINA Tickets*, een schuin aanraakscherm, een kaartlezer, een geldgleuf en een kaartbakje.
 
-- **Plaatsen:** ga staan waar de reiziger straks staat, kijk naar de plek waar de automaat moet komen en doe `/lumina machine place`. De voorkant wijst naar jou; het blok vóór je moet 2 hoog leeg zijn. Verder: `/lumina machine remove` (dichtstbijzijnde), `/lumina machine list` en `/lumina machine rebuild` (na een update van het model).
+- **Twee soorten:** de **MRT**-automaat (wit, 2 m, blauwe kop *LUMINA MRT Tickets*, met geldgleuf) en de compacte **LRT**-automaat voor LRT-perrons (1,75 m, groene kop *LUMINA LRT*, alleen voor de kaart). Het menu is hetzelfde; de titel zegt MRT of LRT.
+- **Plaatsen:** ga staan waar de reiziger straks staat, kijk naar de plek waar de automaat moet komen en doe `/lumina machine place mrt` of `/lumina machine place lrt` (zonder type wordt het MRT). De voorkant wijst naar jou; het blok vóór je moet 2 hoog leeg zijn. Verder: `/lumina machine remove` (dichtstbijzijnde), `/lumina machine list` en `/lumina machine rebuild` (na een update van het model).
 - Of een bord met `[Ticket Machine]` op regel 1: klikken opent hetzelfde menu.
 
 Spelers klikken met rechts op de automaat. Het menu:
@@ -153,7 +157,7 @@ Elke push naar `main` maakt een genummerde release (`v1.0.0.<build>`) met `Lumin
 
 Zet bij een lijn in `network.yml` `type: lrt` (standaard is `mrt`). Een LRT heeft geen poortjes, maar kost precies hetzelfde als de MRT: het tarief voor de afstand, met dezelfde instellingen (`fares:` in `config.yml`). Wie bij een LRT-station in een trein (minecart) stapt, betaalt meteen het starttarief (LC 1,60) van zijn Lumina Card; bij het uitstappen op een ander LRT-station gaat de rest voor de afstand eraf. De kaart mag in je hand of ergens in je inventaris zitten.
 
-- **Geen kaart of minder dan het starttarief?** Dan kun je niet instappen. Kom je bij het uitstappen tekort, dan komt je kaart onder nul en moet je eerst opwaarderen.
+- **Geen geldig kaartje?** Stap je in zonder Lumina Card, met een geblokkeerde kaart of met te weinig tegoed voor het starttarief (ook na auto top-up), dan krijg je een **boete van 200 LumiCoins** van je portemonnee en is de rit verder gratis. Kun je de boete niet betalen, dan kun je niet instappen. Het bedrag staat in `config.yml` onder `lrt.fine` (0 = geen boetes, dan kun je gewoon niet instappen). Kom je bij het uitstappen tekort, dan komt je kaart onder nul en moet je eerst opwaarderen.
 - **Gratis met een baan:** wie een klus heeft aangenomen in een baan met `free-travel`, rijdt gratis mee. Net als bij de poortjes wordt de ritprijs bijgehouden en vervalt die pas als de aanvrager de klus bevestigt. Ook de gratis rit terug na een klus geldt.
 - **Al ingecheckt via een MRT-poortje?** Dan hoort de LRT-rit bij die reis en betaal je bij het uitchecken.
 - Overstappen, uitstappen en weer instappen of van stoel wisselen binnen 2 minuten telt als dezelfde rit.

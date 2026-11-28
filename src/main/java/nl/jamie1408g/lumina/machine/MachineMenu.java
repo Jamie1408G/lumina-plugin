@@ -79,7 +79,12 @@ public final class MachineMenu implements Listener {
 
     private void show(Player player, Screen screen, String machineId) {
         View view = new View(screen, machineId);
-        view.inventory = Bukkit.createInventory(view, SIZE, plugin.msg().get("machine.title-" + screen.name().toLowerCase().replace('_', '-')));
+        String key = "machine.title-" + screen.name().toLowerCase().replace('_', '-');
+        if (screen == Screen.MAIN) {
+            TicketMachineManager.Machine machine = plugin.machines().byId(machineId);
+            key = machine == null ? "machine.title-main" : "machine.title-main-" + machine.type().key();
+        }
+        view.inventory = Bukkit.createInventory(view, SIZE, plugin.msg().get(key));
         fill(player, view);
         player.openInventory(view.inventory);
     }

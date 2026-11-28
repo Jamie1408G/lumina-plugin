@@ -42,8 +42,9 @@ import java.util.UUID;
  */
 public final class TicketMachineManager implements Listener {
 
-    /** A placed machine. parts are in TicketMachineModel.PARTS order, then the header label. */
-    public record Machine(String world, int x, int y, int z, float yaw, List<UUID> parts, List<UUID> hitboxes, int model) {
+    /** A placed machine (MRT or LRT). parts are in its type's parts() order, then the header label. */
+    public record Machine(String world, int x, int y, int z, float yaw, TicketMachineModel.Type type,
+                          List<UUID> parts, List<UUID> hitboxes, int model) {
         public String id() {
             return world + ":" + x + ":" + y + ":" + z;
         }
@@ -89,9 +90,10 @@ public final class TicketMachineManager implements Listener {
                 continue;
             }
             try {
+                TicketMachineModel.Type type = TicketMachineModel.Type.parse(m.getString("type", "mrt"));
                 machines.add(new Machine(m.getString("world", "world"), m.getInt("x"), m.getInt("y"), m.getInt("z"),
-                        (float) m.getDouble("yaw"), uuids(m.getStringList("parts")), uuids(m.getStringList("hitboxes")),
-                        m.getInt("model", 1)));
+                        (float) m.getDouble("yaw"), type == null ? TicketMachineModel.Type.MRT : type,
+                        uuids(m.getStringList("parts")), uuids(m.getStringList("hitboxes")), m.getInt("model", 1)));
             } catch (IllegalArgumentException e) {
                 plugin.getLogger().warning("Skipping a damaged ticket machine in machines.yml (" + key + ")");
             }
@@ -108,6 +110,7 @@ public final class TicketMachineManager implements Listener {
             yml.set(p + "y", m.y());
             yml.set(p + "z", m.z());
             yml.set(p + "yaw", (double) m.yaw());
+            yml.set(p + "type", m.type().key());
             yml.set(p + "model", m.model());
             yml.set(p + "parts", strings(m.parts()));
             yml.set(p + "hitboxes", strings(m.hitboxes()));
@@ -138,7 +141,7 @@ public final class TicketMachineManager implements Listener {
     // ------------------------------------------------------------ placing and removing
 
     /** Places a machine in the block the player is facing, its front towards them. Null, or a messages.yml key. */
-    public String place(Player player) {
+    public String place(Player player, TicketMachineModel.Type type) {
         Location l = player.getLocation();
         World w = l.getWorld();
         if (w == null) {
@@ -157,7 +160,7 @@ public final class TicketMachineManager implements Listener {
         if (low.getType() != Material.AIR || high.getType() != Material.AIR) {
             return "machine.not-empty";
         }
-        Machine machine = build(w, x, y, z, yaw);
+        Machine machine = build(w, x, y, z, yaw, type);
         low.setType(Material.BARRIER, false);
         high.setType(Material.BARRIER, false);
         machines.add(machine);
@@ -165,10 +168,10 @@ public final class TicketMachineManager implements Listener {
         return null;
     }
 
-    private Machine build(World w, int x, int y, int z, float yaw) {
+    private Machine build(World w, int x, int y, int z, float yaw, TicketMachineModel.Type type) {
         Location base = new Location(w, x + 0.5, y, z + 0.5, yaw, 0f);
         List<UUID> ids = new ArrayList<>();
-        for (TicketMachineModel.Part part : TicketMachineModel.PARTS) {
+        for (TicketMachineModel.Part part : type.parts()) {
             BlockDisplay d = w.spawn(base, BlockDisplay.class, e -> {
                 e.setBlock(Material.valueOf(part.material()).createBlockData());
                 e.setTransformation(transform(part));
@@ -181,27 +184,27 @@ public final class TicketMachineManager implements Listener {
         }
         // The name on the header. Text displays face +z, so this one is turned around to face the front.
         double[] off = TicketMachineModel.toWorld(0, TicketMachineModel.LABEL_Z, yaw);
-        Location labelAt = new Location(w, x + 0.5 + off[0], y + TicketMachineModel.LABEL_Y, z + 0.5 + off[1], yaw + 180f, 0f);
+        Location labelAt = new Location(w, x + 0.5 + off[0], y + type.labelY(), z + 0.5 + off[1], yaw + 180f, 0f);
         TextDisplay label = w.spawn(labelAt, TextDisplay.class, t -> {
-            t.setText(plugin.msg().get("machine.model-label"));
+            t.setText(plugin.msg().get("machine.model-label-" + type.key()));
             t.setBillboard(Display.Billboard.FIXED);
             t.setDefaultBackground(false);
             t.setBackgroundColor(Color.fromARGB(0, 0, 0, 0));
             t.setShadowed(false);
             t.setAlignment(TextDisplay.TextAlignment.CENTER);
             t.setBrightness(new Display.Brightness(15, 15));
-            float s = TicketMachineModel.LABEL_SCALE;
+            float s = type.labelScale();
             t.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(s, s, s), new AxisAngle4f()));
             t.addScoreboardTag(TAG);
         });
         ids.add(label.getUniqueId());
         Interaction hit = w.spawn(new Location(w, x + 0.5, y, z + 0.5), Interaction.class, i -> {
             i.setInteractionWidth(1.0f);
-            i.setInteractionHeight(2.0f);
+            i.setInteractionHeight(type.height());
             i.setResponsive(true);
             i.addScoreboardTag(TAG);
         });
-        return new Machine(w.getName(), x, y, z, yaw, ids, List.of(hit.getUniqueId()), TicketMachineModel.VERSION);
+        return new Machine(w.getName(), x, y, z, yaw, type, ids, List.of(hit.getUniqueId()), TicketMachineModel.VERSION);
     }
 
     /** Removes a machine: its entities and barrier blocks. */
@@ -241,7 +244,7 @@ public final class TicketMachineManager implements Listener {
             for (UUID u : m.hitboxes()) {
                 kill(u);
             }
-            Machine fresh = build(w, m.x(), m.y(), m.z(), m.yaw());
+            Machine fresh = build(w, m.x(), m.y(), m.z(), m.yaw(), m.type());
             for (int dy = 0; dy <= 1; dy++) {
                 Block b = w.getBlockAt(m.x(), m.y() + dy, m.z());
                 if (b.getType() == Material.AIR) {
@@ -368,8 +371,9 @@ public final class TicketMachineManager implements Listener {
     }
 
     private static void lights(Machine m, String material) {
-        for (int i = 0; i < TicketMachineModel.PARTS.size() && i < m.parts().size(); i++) {
-            TicketMachineModel.Part part = TicketMachineModel.PARTS.get(i);
+        List<TicketMachineModel.Part> parts = m.type().parts();
+        for (int i = 0; i < parts.size() && i < m.parts().size(); i++) {
+            TicketMachineModel.Part part = parts.get(i);
             if (part.kind() != TicketMachineModel.Kind.LIGHT || part.name().contains("strip")) {
                 continue;
             }

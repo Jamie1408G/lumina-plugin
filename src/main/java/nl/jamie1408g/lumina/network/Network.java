@@ -320,10 +320,35 @@ public final class Network {
         return result;
     }
 
+    /** The line a station code belongs to ("CT2" -> "CTL"), or null if it isn't a station code. */
+    public String lineOfCode(String stationCode) {
+        if (stationCode == null) {
+            return null;
+        }
+        String code = stationCode.trim().toUpperCase(Locale.ROOT);
+        Station station = stationsByCode.get(code);
+        if (station == null) {
+            return null;
+        }
+        for (String line : station.lineCodes()) {
+            if (code.equals(station.codeOn(line))) {
+                return line;
+            }
+        }
+        return null;
+    }
+
     /** Track distance between two neighbouring stations, in blocks. */
     public int hopDistance(Station a, Station b) {
-        if (a.location() != null && b.location() != null) {
-            double straight = a.location().horizontalDistance(b.location());
+        return hopDistance(a, b, null);
+    }
+
+    /** Same, between this line's platforms where they're set (else the station locations). */
+    public int hopDistance(Station a, Station b, String lineCode) {
+        StationLocation la = lineCode == null ? a.location() : a.locationOn(lineCode);
+        StationLocation lb = lineCode == null ? b.location() : b.locationOn(lineCode);
+        if (la != null && lb != null) {
+            double straight = la.horizontalDistance(lb);
             if (straight >= 0) {
                 return Math.max(1, (int) Math.round(straight * settings.distanceFactor()));
             }

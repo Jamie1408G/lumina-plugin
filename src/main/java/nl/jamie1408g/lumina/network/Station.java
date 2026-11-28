@@ -18,6 +18,7 @@ public final class Station {
     private final Map<String, String> codesByLine = new LinkedHashMap<>();
     private String info = "";
     private StationLocation location;
+    private final Map<String, StationLocation> platforms = new LinkedHashMap<>();
 
     Station(String name) {
         this.name = name;
@@ -89,5 +90,27 @@ public final class Station {
 
     public void setLocation(StationLocation location) {
         this.location = location;
+    }
+
+    /**
+     * The platform of one line at this station (set with /lumina setstation <code>, like LM2 or
+     * CT2), or null. Interchanges can have a separate platform per line.
+     */
+    public StationLocation platform(String lineCode) {
+        return lineCode == null ? null : platforms.get(lineCode);
+    }
+
+    public void setPlatform(String lineCode, StationLocation platform) {
+        if (platform == null) {
+            platforms.remove(lineCode);
+        } else {
+            platforms.put(lineCode, platform);
+        }
+    }
+
+    /** Where this line stops here: its own platform, or else the station's location (or null). */
+    public StationLocation locationOn(String lineCode) {
+        StationLocation p = platform(lineCode);
+        return p != null ? p : location;
     }
 }

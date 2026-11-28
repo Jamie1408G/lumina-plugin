@@ -92,7 +92,7 @@ public final class RouteCommand implements TabExecutor {
             if (to.place() != null) {
                 plugin.msg().send(sender, "route.already-there", "place", to.place().name(), "station", route.to().name());
                 if (sender instanceof Player player) {
-                    plugin.guide().plan(player, to.place(), route.to(), true);
+                    plugin.guide().plan(player, route, to.place(), true);
                 }
             } else {
                 plugin.msg().send(sender, "route.same-station", "station", route.to().name());
@@ -100,9 +100,14 @@ public final class RouteCommand implements TabExecutor {
             return true;
         }
         show(sender, route, from, to);
-        if (to.place() != null && sender instanceof Player player
-                && plugin.guide().plan(player, to.place(), route.to(), false)) {
-            plugin.msg().line(sender, "guide.hint", "place", to.place().name(), "station", route.to().name());
+        if (sender instanceof Player player && plugin.guide().plan(player, route, to.place(), false)) {
+            boolean toPlace = to.place() != null && to.place().location() != null;
+            if (route.transfers() > 0) {
+                plugin.msg().line(sender, "guide.hint-change", "station", route.legs().get(1).from().name());
+            }
+            if (toPlace) {
+                plugin.msg().line(sender, "guide.hint", "place", to.place().name(), "station", route.to().name());
+            }
         }
         return true;
     }

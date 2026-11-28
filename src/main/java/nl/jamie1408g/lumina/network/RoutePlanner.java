@@ -140,7 +140,7 @@ public final class RoutePlanner {
                 continue;
             }
             Station next = stations.get(target);
-            edges.add(new Edge(new Node(next, line), network.hopDistance(node.station(), next), false));
+            edges.add(new Edge(new Node(next, line), network.hopDistance(node.station(), next, line.code()), false));
         }
 
         for (String otherCode : node.station().lineCodes()) {
@@ -170,7 +170,7 @@ public final class RoutePlanner {
             int distance = 0;
             int j = i;
             while (j < path.size() - 1 && path.get(j + 1).line() == line && path.get(j + 1).station() != path.get(j).station()) {
-                distance += network.hopDistance(path.get(j).station(), path.get(j + 1).station());
+                distance += network.hopDistance(path.get(j).station(), path.get(j + 1).station(), path.get(j).line().code());
                 stops++;
                 j++;
             }
